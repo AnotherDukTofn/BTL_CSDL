@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Hệ thống quản lý cửa hàng nhạc cụ SqlPtit">
+  <title>SqlPtit - Quản lý Cửa hàng Nhạc cụ</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="bi bi-music-note-beamed"></i>
+        <span>SqlPtit</span>
+      </div>
+      <small class="text-muted">Quản lý Nhạc cụ</small>
+    </div>
+
+    <div class="role-switcher">
+      <label class="role-label">Vai trò hiện tại</label>
+      <div class="role-toggle">
+        <button id="btnRoleAdmin" class="role-btn active" onclick="setRole('admin')">
+          <i class="bi bi-shield-lock-fill"></i> Admin
+        </button>
+        <button id="btnRoleEmployee" class="role-btn" onclick="setRole('employee')">
+          <i class="bi bi-person-fill"></i> Nhân viên
+        </button>
+      </div>
+    </div>
+
+    <ul class="nav-menu">
+      <li class="nav-item active" data-tab="products" onclick="switchTab('products')">
+        <i class="bi bi-box-seam-fill"></i>
+        <span>Sản phẩm</span>
+      </li>
+      <li class="nav-item" data-tab="customers" onclick="switchTab('customers')">
+        <i class="bi bi-people-fill"></i>
+        <span>Khách hàng</span>
+      </li>
+      <li class="nav-item" data-tab="invoices" onclick="switchTab('invoices')">
+        <i class="bi bi-receipt-cutoff"></i>
+        <span>Hóa đơn</span>
+      </li>
+      <li class="nav-item" data-tab="imports" onclick="switchTab('imports')">
+        <i class="bi bi-truck"></i>
+        <span>Quản lý nhập</span>
+      </li>
+      <li class="nav-item" data-tab="employees" onclick="switchTab('employees')">
+        <i class="bi bi-person-badge-fill"></i>
+        <span>Nhân sự</span>
+        <span class="badge-admin">Admin</span>
+      </li>
+      <li class="nav-item" data-tab="warranties" onclick="switchTab('warranties')">
+        <i class="bi bi-shield-check"></i>
+        <span>Bảo hành</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <small>&copy; 2026 SqlPtit System</small>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="mainContent" class="main-content">
+    <!-- ================== TAB: SẢN PHẨM ================== -->
+    <section id="tab-products" class="tab-content active">
+      <div class="content-header">
+        <h1><i class="bi bi-box-seam-fill"></i> Quản lý Sản phẩm</h1>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-group">
+          <div class="input-group">
+            <select id="productSearchType" class="form-select search-select">
+              <option value="all">Tất cả</option>
+              <option value="id">Mã SP</option>
+              <option value="name">Tên SP</option>
+            </select>
+            <input type="text" id="productSearchKeyword" class="form-control search-input" placeholder="Nhập từ khóa tìm kiếm...">
+            <button class="btn btn-primary" onclick="searchProducts()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-outline-info" onclick="toggleProductFilter()">
+            <i class="bi bi-funnel-fill"></i> Lọc
+          </button>
+          <button class="btn btn-success" onclick="openAddProductModal()">
+            <i class="bi bi-plus-lg"></i> Thêm sản phẩm
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Row -->
+      <div id="productFilterRow" class="filter-row" style="display:none;">
+        <div class="filter-group">
+          <select id="filterCategory" class="form-select">
+            <option value="">-- Phân loại --</option>
+          </select>
+          <select id="filterManufacturer" class="form-select">
+            <option value="">-- Nhà sản xuất --</option>
+          </select>
+          <button class="btn btn-info" onclick="filterProducts()"><i class="bi bi-funnel"></i> Áp dụng</button>
+          <button class="btn btn-outline-secondary" onclick="resetProductFilter()"><i class="bi bi-x-lg"></i> Xóa lọc</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã SP</th>
+              <th>Tên sản phẩm</th>
+              <th>Phân loại</th>
+              <th>Nhà sản xuất</th>
+              <th class="col-admin">Giá nhập</th>
+              <th>Giá bán</th>
+              <th>Tồn kho</th>
+            </tr>
+          </thead>
+          <tbody id="productsTableBody">
+            <tr><td colspan="7" class="text-center">Đang tải dữ liệu...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================== TAB: KHÁCH HÀNG ================== -->
+    <section id="tab-customers" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-people-fill"></i> Quản lý Khách hàng</h1>
+      </div>
+      <div class="toolbar">
+        <div class="search-group">
+          <div class="input-group">
+            <input type="text" id="customerSearchKeyword" class="form-control search-input" placeholder="Tìm theo tên hoặc mã KH...">
+            <button class="btn btn-primary" onclick="searchCustomers()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-success" onclick="openAddCustomerModal()">
+            <i class="bi bi-plus-lg"></i> Thêm khách hàng
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã KH</th>
+              <th>Họ và Tên</th>
+              <th>Giới tính</th>
+              <th>Địa chỉ</th>
+              <th>SĐT</th>
+            </tr>
+          </thead>
+          <tbody id="customersTableBody">
+            <tr><td colspan="5" class="text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================== TAB: HÓA ĐƠN ================== -->
+    <section id="tab-invoices" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-receipt-cutoff"></i> Quản lý Hóa đơn</h1>
+      </div>
+      <div class="toolbar">
+        <div class="search-group"></div>
+        <div class="action-group">
+          <button class="btn btn-success" onclick="openCreateInvoiceModal()">
+            <i class="bi bi-plus-lg"></i> Tạo hóa đơn
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã HĐ</th>
+              <th>Khách hàng</th>
+              <th>Nhân viên</th>
+              <th>Ngày lập</th>
+            </tr>
+          </thead>
+          <tbody id="invoicesTableBody">
+            <tr><td colspan="4" class="text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================== TAB: QUẢN LÝ NHẬP ================== -->
+    <section id="tab-imports" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-truck"></i> Quản lý Nhập kho</h1>
+      </div>
+      <div class="toolbar">
+        <div class="search-group"></div>
+        <div class="action-group">
+          <button class="btn btn-success" onclick="openCreateImportModal()">
+            <i class="bi bi-plus-lg"></i> Tạo phiếu nhập
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã phiếu</th>
+              <th>Người lập</th>
+              <th>Nhà cung cấp</th>
+              <th>Ngày nhập</th>
+            </tr>
+          </thead>
+          <tbody id="importsTableBody">
+            <tr><td colspan="4" class="text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================== TAB: NHÂN SỰ ================== -->
+    <section id="tab-employees" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-person-badge-fill"></i> Quản lý Nhân sự</h1>
+      </div>
+      <div id="employeeAccessDenied" class="access-denied" style="display:none;">
+        <i class="bi bi-lock-fill"></i>
+        <h3>Truy cập bị từ chối</h3>
+        <p>Bạn không có quyền truy cập trang này. Chỉ Admin mới được xem.</p>
+      </div>
+      <div id="employeeContent">
+        <div class="toolbar">
+          <div class="search-group"></div>
+          <div class="action-group">
+            <button class="btn btn-success" onclick="openAddEmployeeModal()">
+              <i class="bi bi-plus-lg"></i> Thêm nhân viên
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="table data-table">
+              <thead>
+                <tr>
+                  <th>Mã NV</th>
+                  <th>Mã Code</th>
+                  <th>Họ Tên</th>
+                  <th>Chức vụ</th>
+                  <th>Loại lao động</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+            <tbody id="employeesTableBody">
+              <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================== TAB: BẢO HÀNH ================== -->
+    <section id="tab-warranties" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-shield-check"></i> Quản lý Bảo hành</h1>
+      </div>
+      <div class="toolbar">
+        <div class="search-group"></div>
+        <div class="action-group">
+          <button class="btn btn-warning" onclick="openCreateClaimModal()">
+            <i class="bi bi-tools"></i> Tạo yêu cầu sửa chữa
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã BH</th>
+              <th>Mã HĐ</th>
+              <th>Sản phẩm</th>
+              <th>Serial Number</th>
+              <th>Ngày bắt đầu</th>
+              <th>Ngày kết thúc</th>
+            </tr>
+          </thead>
+          <tbody id="warrantiesTableBody">
+            <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="content-header mt-4">
+        <h2><i class="bi bi-tools"></i> Danh sách Yêu cầu Sửa chữa</h2>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã YC</th>
+              <th>Sản phẩm</th>
+              <th>Serial</th>
+              <th>Mô tả</th>
+              <th>Nhân viên</th>
+              <th>Ngày</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="claimsTableBody">
+            <tr><td colspan="7" class="text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================== MODALS ================== -->
+
+  <!-- Modal: Sửa sản phẩm -->
+  <div class="modal fade" id="editProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Sửa sản phẩm</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editProductId">
+          <div class="mb-3">
+            <label class="form-label">Tên sản phẩm</label>
+            <input type="text" id="editProductName" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phân loại</label>
+            <select id="editProductCategory" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nhà sản xuất</label>
+            <select id="editProductManufacturer" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Giá bán</label>
+            <input type="number" id="editProductPrice" class="form-control">
+            <small id="editPriceNote" class="text-warning" style="display:none;">
+              <i class="bi bi-lock-fill"></i> Chỉ Admin mới được sửa giá bán
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-primary" onclick="updateProduct()">
+            <i class="bi bi-check-lg"></i> Xác nhận
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm sản phẩm -->
+  <div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Thêm sản phẩm mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên sản phẩm</label>
+            <input type="text" id="addProductName" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phân loại</label>
+            <select id="addProductCategory" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nhà sản xuất</label>
+            <select id="addProductManufacturer" class="form-select"></select>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Giá nhập</label>
+              <input type="number" id="addProductInPrice" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Giá bán</label>
+              <input type="number" id="addProductOutPrice" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Số lượng tồn kho</label>
+            <input type="number" id="addProductStock" class="form-control" value="0">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-success" onclick="saveProduct()">
+            <i class="bi bi-check-lg"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm/Sửa Khách hàng -->
+  <div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title" id="customerModalTitle"><i class="bi bi-person-plus"></i> Khách hàng</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="customerModalId">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Họ</label>
+              <input type="text" id="customerFirstName" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tên</label>
+              <input type="text" id="customerLastName" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tên đệm</label>
+            <input type="text" id="customerMiddleName" class="form-control">
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Giới tính</label>
+              <select id="customerGender" class="form-select">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">SĐT</label>
+              <input type="text" id="customerPhone" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tỉnh/Thành phố</label>
+            <input type="text" id="customerProvince" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-primary" id="customerModalSaveBtn" onclick="saveCustomer()">
+            <i class="bi bi-check-lg"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tạo Hóa đơn -->
+  <div class="modal fade" id="invoiceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-receipt"></i> Tạo Hóa đơn mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Khách hàng</label>
+              <select id="invoiceCustomer" class="form-select"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Nhân viên bán</label>
+              <select id="invoiceEmployee" class="form-select"></select>
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">Danh sách sản phẩm</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="addInvoiceItem()">
+              <i class="bi bi-plus-lg"></i> Thêm SP
+            </button>
+          </div>
+          <div id="invoiceItems">
+            <!-- Dynamic rows -->
+          </div>
+          <div id="invoiceError" class="alert alert-danger mt-3" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-success" onclick="submitInvoice()">
+            <i class="bi bi-check-lg"></i> Tạo hóa đơn
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chi tiết Hóa đơn -->
+  <div class="modal fade" id="invoiceDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-info-circle"></i> Chi tiết Hóa đơn</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table data-table">
+            <thead>
+              <tr>
+                <th>Sản phẩm</th>
+                <th>Số lượng</th>
+                <th>Đơn giá</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceDetailBody"></tbody>
+          </table>
+          <div class="text-end fw-bold" id="invoiceDetailTotal"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tạo Phiếu nhập -->
+  <div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-truck"></i> Tạo Phiếu nhập mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Nhà cung cấp</label>
+              <select id="importProvider" class="form-select"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Nhân viên lập</label>
+              <select id="importEmployee" class="form-select"></select>
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">Danh sách sản phẩm nhập</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="addImportItem()">
+              <i class="bi bi-plus-lg"></i> Thêm SP
+            </button>
+          </div>
+          <div id="importItems">
+            <!-- Dynamic rows -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-success" onclick="submitImport()">
+            <i class="bi bi-check-lg"></i> Tạo phiếu nhập
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chi tiết Phiếu nhập -->
+  <div class="modal fade" id="importDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-info-circle"></i> Chi tiết Phiếu nhập</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table data-table">
+            <thead>
+              <tr>
+                <th>Sản phẩm</th>
+                <th>Số lượng</th>
+                <th>Đơn giá</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="importDetailBody"></tbody>
+          </table>
+          <div class="text-end fw-bold" id="importDetailTotal"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm/Sửa Nhân viên -->
+  <div class="modal fade" id="employeeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title" id="employeeModalTitle"><i class="bi bi-person-plus"></i> Nhân viên</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="empId">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Họ</label>
+              <input type="text" id="empFirstName" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tên</label>
+              <input type="text" id="empLastName" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tên đệm</label>
+            <input type="text" id="empMiddleName" class="form-control">
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Giới tính</label>
+              <select id="empGender" class="form-select">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tỉnh/TP</label>
+              <input type="text" id="empProvince" class="form-control">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Chức vụ</label>
+              <input type="text" id="empPosition" class="form-control" placeholder="VD: Bán hàng, Kế toán...">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Loại lao động</label>
+              <select id="empEmploymentType" class="form-select">
+                <option value="">-- Chọn --</option>
+                <option value="Toàn thời gian">Toàn thời gian</option>
+                <option value="Bán thời gian">Bán thời gian</option>
+                <option value="Hợp đồng">Hợp đồng</option>
+                <option value="Thử việc">Thử việc</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-success" id="empModalSaveBtn" onclick="saveEmployee()">
+            <i class="bi bi-check-lg"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tạo yêu cầu sửa chữa -->
+  <div class="modal fade" id="claimModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-tools"></i> Tạo Yêu cầu Sửa chữa</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Chọn phiếu bảo hành</label>
+            <select id="claimWarrantyId" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mô tả lỗi</label>
+            <textarea id="claimDescription" class="form-control" rows="4" placeholder="Nhập mô tả lỗi sản phẩm..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-warning" onclick="submitClaim()">
+            <i class="bi bi-send"></i> Gửi yêu cầu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999;">
+    <div id="toastNotification" class="toast align-items-center border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/products.js"></script>
+  <script src="js/customers.js"></script>
+  <script src="js/invoices.js"></script>
+  <script src="js/imports.js"></script>
+  <script src="js/employees.js"></script>
+  <script src="js/warranties.js"></script>
+</body>
+</html>
