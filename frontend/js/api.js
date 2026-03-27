@@ -12,6 +12,7 @@ async function apiGet(endpoint) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'x-role': getCurrentRole(),
+      'bypass-tunnel-reminder': 'true',
     },
   });
   return response.json();
@@ -23,6 +24,7 @@ async function apiPost(endpoint, body) {
     headers: {
       'Content-Type': 'application/json',
       'x-role': getCurrentRole(),
+      'bypass-tunnel-reminder': 'true',
     },
     body: JSON.stringify(body),
   });
@@ -35,6 +37,7 @@ async function apiPut(endpoint, body) {
     headers: {
       'Content-Type': 'application/json',
       'x-role': getCurrentRole(),
+      'bypass-tunnel-reminder': 'true',
     },
     body: JSON.stringify(body),
   });
