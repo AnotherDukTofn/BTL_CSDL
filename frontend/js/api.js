@@ -2,7 +2,7 @@
 // API Helper - Fetch Wrapper
 // ========================================
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'https://little-paws-sing.loca.lt/api';
 
 function getCurrentRole() {
   return window.__currentRole || 'admin';
