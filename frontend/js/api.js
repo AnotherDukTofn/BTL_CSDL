@@ -2,18 +2,33 @@
 // API Helper - Fetch Wrapper
 // ========================================
 
-const API_BASE = 'https://little-paws-sing.loca.lt/api';
+const API_BASE = 'http://localhost:3000/api';
 
 function getCurrentRole() {
-  return window.__currentRole || 'admin';
+  const user = getCurrentUser();
+  return user ? user.role : 'employee';
+}
+
+function getCurrentUser() {
+  const data = sessionStorage.getItem('currentUser');
+  return data ? JSON.parse(data) : null;
+}
+
+function getAuthHeaders() {
+  const user = getCurrentUser();
+  const role = user ? (user.role === 'manager' ? 'admin' : 'employee') : 'employee';
+  const headers = {
+    'x-role': role,
+  };
+  if (user) {
+    headers['x-employee-id'] = String(user.employee_id);
+  }
+  return headers;
 }
 
 async function apiGet(endpoint) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'x-role': getCurrentRole(),
-      'bypass-tunnel-reminder': 'true',
-    },
+    headers: getAuthHeaders(),
   });
   return response.json();
 }
@@ -23,8 +38,7 @@ async function apiPost(endpoint, body) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-role': getCurrentRole(),
-      'bypass-tunnel-reminder': 'true',
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(body),
   });
@@ -36,8 +50,7 @@ async function apiPut(endpoint, body) {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'x-role': getCurrentRole(),
-      'bypass-tunnel-reminder': 'true',
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(body),
   });

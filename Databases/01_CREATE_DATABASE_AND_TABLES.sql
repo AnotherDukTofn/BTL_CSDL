@@ -14,7 +14,6 @@ GO
 USE SqlPtit;
 GO
 
--- 1. PERSON (IDENTITY)
 CREATE TABLE [PERSON] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [first_name] nvarchar(255),
@@ -29,7 +28,6 @@ CREATE TABLE [PERSON] (
 )
 GO
 
--- 2. PERSON_PHONE (Không dùng Identity vì nó phụ thuộc vào Person_id)
 CREATE TABLE [PERSON_PHONE] (
   [person_id] int,
   [phone_num] nvarchar(255),
@@ -37,24 +35,21 @@ CREATE TABLE [PERSON_PHONE] (
 )
 GO
 
--- 3. CUSTOMER (Id tham chiếu 1-1 từ Person nên không dùng Identity)
 CREATE TABLE [CUSTOMER] (
   [id] int PRIMARY KEY,
   [customer_code] nvarchar(255) UNIQUE
 )
 GO
 
--- 4. EMPLOYEE (Id tham chiếu 1-1 từ Person nên không dùng Identity)
 CREATE TABLE [EMPLOYEE] (
   [id] int PRIMARY KEY,
   [employee_code] nvarchar(255) UNIQUE,
-  [employment_type] nvarchar(255),
-  [position] nvarchar(255),
-  [is_active] bit
+  [employment_type] nvarchar(255) NOT NULL,
+  [position] nvarchar(255) NOT NULL,
+  [is_active] bit 
 )
 GO
 
--- 5. PROVIDER (IDENTITY)
 CREATE TABLE [PROVIDER] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [name] nvarchar(255),
@@ -63,21 +58,18 @@ CREATE TABLE [PROVIDER] (
 )
 GO
 
--- 6. CATEGORY (IDENTITY)
 CREATE TABLE [CATEGORY] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [name] nvarchar(255)
 )
 GO
 
--- 7. MANUFACTURER (IDENTITY)
 CREATE TABLE [MANUFACTURER] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [name] nvarchar(255)
 )
 GO
 
--- 8. PRODUCT (IDENTITY)
 CREATE TABLE [PRODUCT] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [name] nvarchar(255),
@@ -89,7 +81,6 @@ CREATE TABLE [PRODUCT] (
 )
 GO
 
--- 9. IMPORT (IDENTITY)
 CREATE TABLE [IMPORT] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [employee_id] int,
@@ -98,7 +89,6 @@ CREATE TABLE [IMPORT] (
 )
 GO
 
--- 10. IMPORT_DETAIL (Khóa chính phức hợp, không dùng Identity)
 CREATE TABLE [IMPORT_DETAIL] (
   [import_id] int,
   [product_id] int,
@@ -108,7 +98,6 @@ CREATE TABLE [IMPORT_DETAIL] (
 )
 GO
 
--- 11. PRODUCT_SERIAL (Khóa chính là nvarchar, không dùng Identity)
 CREATE TABLE [PRODUCT_SERIAL] (
   [serial_number] nvarchar(255) PRIMARY KEY,
   [product_id] int,
@@ -117,7 +106,6 @@ CREATE TABLE [PRODUCT_SERIAL] (
 )
 GO
 
--- 12. INVOICE (IDENTITY)
 CREATE TABLE [INVOICE] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [customer_id] int,
@@ -126,7 +114,6 @@ CREATE TABLE [INVOICE] (
 )
 GO
 
--- 13. INVOICE_DETAIL (Khóa chính phức hợp)
 CREATE TABLE [INVOICE_DETAIL] (
   [invoice_id] int,
   [product_id] int,
@@ -136,7 +123,6 @@ CREATE TABLE [INVOICE_DETAIL] (
 )
 GO
 
--- 14. WARRANTY (IDENTITY)
 CREATE TABLE [WARRANTY] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [invoice_id] int,
@@ -147,7 +133,6 @@ CREATE TABLE [WARRANTY] (
 )
 GO
 
--- 15. WARRANTY_CLAIM (IDENTITY)
 CREATE TABLE [WARRANTY_CLAIM] (
   [id] int PRIMARY KEY IDENTITY(1,1),
   [warranty_id] int,
@@ -158,9 +143,14 @@ CREATE TABLE [WARRANTY_CLAIM] (
 )
 GO
 
--- ==========================================
--- THIẾT LẬP KHÓA NGOẠI
--- ==========================================
+CREATE TABLE [ACCOUNT] 
+  [id] int PRIMARY KEY IDENTITY(1,1),
+  [employee_id] int UNIQUE,
+  [username] nvarchar(255) UNIQUE NOT NULL,
+  [password] nvarchar(255) NOT NULL,
+  [role] nvarchar(50) NOT NULL DEFAULT 'employee'
+GO
+
 ALTER TABLE [PERSON_PHONE] ADD FOREIGN KEY ([person_id]) REFERENCES [PERSON] ([id])
 ALTER TABLE [CUSTOMER] ADD FOREIGN KEY ([id]) REFERENCES [PERSON] ([id])
 ALTER TABLE [EMPLOYEE] ADD FOREIGN KEY ([id]) REFERENCES [PERSON] ([id])
@@ -181,4 +171,5 @@ ALTER TABLE [WARRANTY] ADD FOREIGN KEY ([product_id]) REFERENCES [PRODUCT] ([id]
 ALTER TABLE [WARRANTY] ADD FOREIGN KEY ([serial_number]) REFERENCES [PRODUCT_SERIAL] ([serial_number])
 ALTER TABLE [WARRANTY_CLAIM] ADD FOREIGN KEY ([warranty_id]) REFERENCES [WARRANTY] ([id])
 ALTER TABLE [WARRANTY_CLAIM] ADD FOREIGN KEY ([employee_id]) REFERENCES [EMPLOYEE] ([id])
+ALTER TABLE [ACCOUNT] ADD FOREIGN KEY ([employee_id]) REFERENCES [EMPLOYEE] ([id])
 GO

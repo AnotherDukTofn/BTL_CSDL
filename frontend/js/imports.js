@@ -25,6 +25,24 @@ function renderImportsTable(data) {
   `).join('');
 }
 
+// Search Imports
+async function searchImports() {
+  const type = document.getElementById('importSearchType').value;
+  const keyword = document.getElementById('importSearchKeyword').value.trim();
+  if (!keyword) {
+    loadImports();
+    return;
+  }
+  try {
+    const res = await apiGet(`/imports/search?type=${type}&keyword=${encodeURIComponent(keyword)}`);
+    if (res.success) {
+      renderImportsTable(res.data);
+    }
+  } catch (err) {
+    console.error('Error searching imports:', err);
+  }
+}
+
 async function viewImportDetails(id) {
   try {
     const res = await apiGet(`/imports/${id}/details`);

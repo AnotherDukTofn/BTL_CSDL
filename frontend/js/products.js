@@ -15,7 +15,8 @@ async function loadProducts() {
 
 function renderProductsTable(data) {
   const tbody = document.getElementById('productsTableBody');
-  const isAdmin = getCurrentRole() === 'admin';
+  const user = getCurrentUser();
+  const isAdmin = user && user.role === 'manager';
 
   if (!data.length) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Không có sản phẩm nào.</td></tr>';
@@ -93,7 +94,8 @@ function openEditProductModal(product) {
   document.getElementById('editProductManufacturer').value = product.manufacturer_id || '';
 
   // Price field: disable for employee
-  const isAdmin = getCurrentRole() === 'admin';
+  const user = getCurrentUser();
+  const isAdmin = user && user.role === 'manager';
   document.getElementById('editProductPrice').disabled = !isAdmin;
   document.getElementById('editPriceNote').style.display = isAdmin ? 'none' : 'block';
 
@@ -158,4 +160,60 @@ async function saveProduct() {
   } catch (err) {
     showToast('Lỗi kết nối!', 'error');
   }
+}
+
+// ====== THÊM DANH MỤC (req #3) ======
+function addCategory() {
+  document.getElementById('newCategoryName').value = '';
+  new bootstrap.Modal(document.getElementById('addCategoryModal')).show();
+}
+
+async function submitNewCategory() {
+  const name = document.getElementById('newCategoryName').value.trim();
+  if (!name) { showToast('Hãy nhập tên danh mục!', 'error'); return; }
+
+  try {
+    const res = await apiPost('/categories', { name });
+    if (res.success) {
+      showToast('Thêm danh mục thành công!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+
+      // Cập nhật cache và các dropdown liên quan
+      const catRes = await apiGet('/categories');
+      if (catRes.success) {
+        window.__cache.categories = catRes.data;
+        populateSelect('filterCategory', window.__cache.categories, '-- Phân loại --');
+        populateSelect('addProductCategory', window.__cache.categories, '-- Phân loại --');
+        populateSelect('editProductCategory', window.__cache.categories, '-- Phân loại --');
+      }
+    } else showToast(res.message, 'error');
+  } catch (err) { showToast('Lỗi kết nối!', 'error'); }
+}
+
+// ====== THÊM NHÀ SẢN XUẤT (req #3) ======
+function addManufacturer() {
+  document.getElementById('newManufacturerName').value = '';
+  new bootstrap.Modal(document.getElementById('addManufacturerModal')).show();
+}
+
+async function submitNewManufacturer() {
+  const name = document.getElementById('newManufacturerName').value.trim();
+  if (!name) { showToast('Hãy nhập tên NSX!', 'error'); return; }
+
+  try {
+    const res = await apiPost('/manufacturers', { name });
+    if (res.success) {
+      showToast('Thêm nhà sản xuất thành công!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('addManufacturerModal')).hide();
+
+      // Cập nhật cache và các dropdown liên quan
+      const manRes = await apiGet('/manufacturers');
+      if (manRes.success) {
+        window.__cache.manufacturers = manRes.data;
+        populateSelect('filterManufacturer', window.__cache.manufacturers, '-- Nhà sản xuất --');
+        populateSelect('addProductManufacturer', window.__cache.manufacturers, '-- Nhà sản xuất --');
+        populateSelect('editProductManufacturer', window.__cache.manufacturers, '-- Nhà sản xuất --');
+      }
+    } else showToast(res.message, 'error');
+  } catch (err) { showToast('Lỗi kết nối!', 'error'); }
 }

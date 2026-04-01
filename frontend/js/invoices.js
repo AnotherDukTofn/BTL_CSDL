@@ -31,6 +31,23 @@ function renderInvoicesTable(data) {
   `).join('');
 }
 
+// Search Invoices
+async function searchInvoices() {
+  const keyword = document.getElementById('invoiceSearchKeyword').value.trim();
+  if (!keyword) {
+    loadInvoices();
+    return;
+  }
+  try {
+    const res = await apiGet(`/invoices/search?keyword=${encodeURIComponent(keyword)}`);
+    if (res.success) {
+      renderInvoicesTable(res.data);
+    }
+  } catch (err) {
+    console.error('Error searching invoices:', err);
+  }
+}
+
 // View invoice details
 async function viewInvoiceDetails(id) {
   try {

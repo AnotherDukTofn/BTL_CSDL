@@ -1,20 +1,34 @@
 USE SqlPtit;
 GO
 
--- Xóa sạch dữ liệu khi init
--- 1. Tắt tạm thời các ràng buộc khóa ngoại để xóa cho nhanh
+--- 1. Tắt tạm thời các ràng buộc khóa ngoại để xóa cho nhanh
 EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
 GO
 
--- 2. Xóa sạch dữ liệu trong tất cả các bảng
+-- 2. Xóa dữ liệu
 EXEC sp_MSforeachtable 'DELETE FROM ?'
 GO
 
--- 3. Reset các cột IDENTITY về lại số 1
-EXEC sp_MSforeachtable 'IF OBJECTPROPERTY(OBJECT_ID(''?''), ''TableHasIdentity'') = 1 DBCC CHECKIDENT (''?'', RESEED, 0)'
+-- 3. Reset ID thông minh dựa trên lịch sử dữ liệu của bảng
+EXEC sp_MSforeachtable '
+IF OBJECTPROPERTY(OBJECT_ID(''?''), ''TableHasIdentity'') = 1 
+BEGIN
+    DECLARE @LastValue sql_variant;
+    SELECT @LastValue = last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID(''?'');
+    
+    IF @LastValue IS NULL
+        -- Nếu bảng chưa từng có data, ép ID đầu tiên sinh ra là 1
+        DBCC CHECKIDENT (''?'', RESEED, 1);
+    ELSE
+        -- Nếu bảng đã có data và vừa bị xóa, ép ID bắt đầu từ 0 để dòng tiếp theo (0 + 1) là 1
+        DBCC CHECKIDENT (''?'', RESEED, 0);
+END'
 GO
 
--- 4. Bật lại các ràng buộc khóa ngoại
+-- 4. Bật lại ràng buộc khóa ngoại
+EXEC sp_MSforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL'
+GO
+
 EXEC sp_MSforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL'
 GO
 
@@ -80,20 +94,18 @@ INSERT INTO CUSTOMER (id, customer_code) VALUES
 (16, 'KH016'), (17, 'KH017'), (18, 'KH018'), (19, 'KH019'), (20, 'KH020');
 GO
 
--- ============================================================
--- NHÓM 4: PRODUCT (20 sản phẩm)
--- ============================================================
+-- NHÓM 4: PRODUCT 
 INSERT INTO PRODUCT (name, category_id, manufacturer_id, in_unit_price, out_unit_price, stock_quantity) VALUES
-(N'Yamaha FG800',         1,  1,  4000,   5500,   0),  (N'Taylor 114ce',          1,  4,  18000,  22000,  67),
-(N'Fender Stratocaster',  3,  3,  15000,  19000,  0),  (N'Gibson Les Paul',        3,  5,  45000,  55000,  36),
-(N'Yamaha U1J',           4,  1,  85000,  110000, 0),  (N'Kawai K300',             4,  7,  120000, 145000, 18),
-(N'Roland FP-30X',        5,  2,  16000,  20000,  0),  (N'Casio PX-S1100',         5,  6,  14000,  17500,  27),
-(N'Yamaha PSR-E473',      6,  1,  8000,   10500,  0),  (N'Roland Juno-DS',         6,  2,  22000,  28000,  29),
-(N'Pearl Export',         7,  8,  25000,  32000,  0),  (N'Yamaha Rydeen',          7,  1,  18000,  23000,  22),
-(N'Roland TD-17KVX',      8,  2,  35000,  42000,  0),  (N'Yamaha DTX6K',           8,  1,  28000,  34000,  11),
-(N'Stradivarius Copy',    9,  9,  50000,  70000,  0),  (N'Yamaha V3AS',            9,  1,  12000,  15500,  9),
-(N'Selmer AS42',          10, 10, 40000,  52000,  0),  (N'Yamaha YAS-280',         10, 1,  25000,  31000,  20),
-(N'Fender Precision Bass',3,  3,  17000,  21000,  0),  (N'Taylor GS Mini',         1,  4,  12000,  16000,  11);
+(N'Yamaha FG800',         1,  1,  4000,   5500,   15),  (N'Taylor 114ce',          1,  4,  18000,  22000,  10),
+(N'Fender Stratocaster',  3,  3,  15000,  19000,  12),  (N'Gibson Les Paul',        3,  5,  45000,  55000,  8),
+(N'Yamaha U1J',           4,  1,  85000,  110000, 5),   (N'Kawai K300',             4,  7,  120000, 145000, 4),
+(N'Roland FP-30X',        5,  2,  16000,  20000,  18),  (N'Casio PX-S1100',         5,  6,  14000,  17500,  14),
+(N'Yamaha PSR-E473',      6,  1,  8000,   10500,  20),  (N'Roland Juno-DS',         6,  2,  22000,  28000,  9),
+(N'Pearl Export',         7,  8,  25000,  32000,  7),   (N'Yamaha Rydeen',          7,  1,  18000,  23000,  11),
+(N'Roland TD-17KVX',      8,  2,  35000,  42000,  6),   (N'Yamaha DTX6K',           8,  1,  28000,  34000,  8),
+(N'Stradivarius Copy',    9,  9,  50000,  70000,  3),   (N'Yamaha V3AS',            9,  1,  12000,  15500,  10),
+(N'Selmer AS42',          10, 10, 40000,  52000,  5),   (N'Yamaha YAS-280',         10, 1,  25000,  31000,  12),
+(N'Fender Precision Bass',3,  3,  17000,  21000,  9),   (N'Taylor GS Mini',         1,  4,  12000,  16000,  13);
 GO
 
 -- ============================================================
@@ -114,7 +126,13 @@ INSERT INTO PRODUCT_SERIAL (serial_number, product_id, import_id, sell_status) V
 ('SN-PNO-001', 5,  1, 1), ('SN-PNO-002', 6,  1, 1), ('SN-PNO-003', 7,  1, 1), ('SN-PNO-004', 8,  1, 1),
 ('SN-KEY-001', 9,  1, 1), ('SN-KEY-002', 10, 1, 1), ('SN-DRM-001', 11, 1, 1), ('SN-DRM-002', 12, 1, 1),
 ('SN-DRM-003', 13, 1, 1), ('SN-DRM-004', 14, 1, 1), ('SN-VIO-001', 15, 1, 1), ('SN-VIO-002', 16, 1, 1),
-('SN-SAX-001', 17, 1, 1), ('SN-SAX-002', 18, 1, 1), ('SN-BAS-001', 19, 1, 1), ('SN-GTR-005', 20, 1, 1);
+('SN-SAX-001', 17, 1, 1), ('SN-SAX-002', 18, 1, 1), ('SN-BAS-001', 19, 1, 1), ('SN-GTR-005', 20, 1, 1),
+('SN-GTR-001-B', 1,  2, 1), ('SN-GTR-002-B', 2,  4, 1), ('SN-GTR-003-B', 3,  2, 1),
+('SN-PNO-003-B', 7,  2, 1), ('SN-PNO-004-B', 8,  5, 1), ('SN-KEY-001-B', 9,  3, 1),
+('SN-KEY-002-B', 10, 5, 1), ('SN-DRM-001-B', 11, 3, 1), ('SN-DRM-003-B', 13, 3, 1),
+('SN-DRM-004-B', 14, 6, 1), ('SN-VIO-002-B', 16, 6, 1), ('SN-SAX-001-B', 17, 4, 1),
+('SN-SAX-002-B', 18, 6, 1), ('SN-BAS-001-B', 19, 4, 1), ('SN-GTR-005-B', 20, 6, 1);
+GO
 
 -- Import 2-6: IMPORT_DETAIL → trigger cộng stock cho SP đang =0
 INSERT INTO IMPORT_DETAIL (import_id, product_id, import_quantity, unit_price) VALUES
@@ -172,7 +190,22 @@ INSERT INTO WARRANTY (invoice_id, product_id, serial_number, start_date, end_dat
 (17, 13, 'SN-DRM-003', DATEADD(day,-1, GETDATE()), DATEADD(year,1,DATEADD(day,-1, GETDATE()))),
 (18, 15, 'SN-VIO-001', DATEADD(day,-1, GETDATE()), DATEADD(year,2,DATEADD(day,-1, GETDATE()))),
 (19, 17, 'SN-SAX-001', GETDATE(),                  DATEADD(year,1,GETDATE())),
-(20, 19, 'SN-BAS-001', GETDATE(),                  DATEADD(year,1,GETDATE()));
+(20, 19, 'SN-BAS-001', GETDATE(),                  DATEADD(year,1,GETDATE())),
+(1,  2,  'SN-GTR-002-B', DATEADD(day,-14,GETDATE()), DATEADD(year,1,DATEADD(day,-14,GETDATE()))),
+(4,  8,  'SN-PNO-004-B', DATEADD(day,-11,GETDATE()), DATEADD(year,1,DATEADD(day,-11,GETDATE()))),
+(5,  10, 'SN-KEY-002-B', DATEADD(day,-10,GETDATE()), DATEADD(year,1,DATEADD(day,-10,GETDATE()))),
+(7,  14, 'SN-DRM-004-B', DATEADD(day,-8, GETDATE()), DATEADD(year,1,DATEADD(day,-8, GETDATE()))),
+(8,  16, 'SN-VIO-002-B', DATEADD(day,-7, GETDATE()), DATEADD(year,2,DATEADD(day,-7, GETDATE()))),
+(9,  18, 'SN-SAX-002-B', DATEADD(day,-6, GETDATE()), DATEADD(year,1,DATEADD(day,-6, GETDATE()))),
+(10, 20, 'SN-GTR-005-B', DATEADD(day,-5, GETDATE()), DATEADD(year,1,DATEADD(day,-5, GETDATE()))),
+(11, 1,  'SN-GTR-001-B', DATEADD(day,-4, GETDATE()), DATEADD(year,1,DATEADD(day,-4, GETDATE()))),
+(12, 3,  'SN-GTR-003-B', DATEADD(day,-4, GETDATE()), DATEADD(year,1,DATEADD(day,-4, GETDATE()))),
+(14, 7,  'SN-PNO-003-B', DATEADD(day,-3, GETDATE()), DATEADD(year,1,DATEADD(day,-3, GETDATE()))),
+(15, 9,  'SN-KEY-001-B', DATEADD(day,-2, GETDATE()), DATEADD(year,1,DATEADD(day,-2, GETDATE()))),
+(16, 11, 'SN-DRM-001-B', DATEADD(day,-2, GETDATE()), DATEADD(year,1,DATEADD(day,-2, GETDATE()))),
+(17, 13, 'SN-DRM-003-B', DATEADD(day,-1, GETDATE()), DATEADD(year,1,DATEADD(day,-1, GETDATE()))),
+(19, 17, 'SN-SAX-001-B', GETDATE(),                  DATEADD(year,1,GETDATE())),
+(20, 19, 'SN-BAS-001-B', GETDATE(),                  DATEADD(year,1,GETDATE()));
 
 INSERT INTO WARRANTY_CLAIM (warranty_id, employee_id, claim_date, description, status) VALUES
 (1,  1, DATEADD(day,-10,GETDATE()), N'Đứt dây đàn guitar',                N'Done'),
@@ -198,6 +231,17 @@ INSERT INTO WARRANTY_CLAIM (warranty_id, employee_id, claim_date, description, s
 GO
 
 -- ============================================================
+-- NHÓM 8: ACCOUNT (Tài khoản đăng nhập)
+-- ============================================================
+INSERT INTO ACCOUNT (employee_id, username, password, role) VALUES
+(1, 'admin',   '123456', 'manager'),
+(2, 'nv002',   '123456', 'employee'),
+(3, 'nv003',   '123456', 'employee'),
+(4, 'nv004',   '123456', 'employee'),
+(5, 'nv005',   '123456', 'employee');
+GO
+
+-- ============================================================
 -- KIỂM TRA KẾT QUẢ
 -- ============================================================
 SELECT 'CATEGORY'      AS [Bảng], COUNT(*) AS [Số dòng] FROM CATEGORY       UNION ALL
@@ -214,5 +258,6 @@ SELECT 'PRODUCT_SERIAL',COUNT(*) FROM PRODUCT_SERIAL UNION ALL
 SELECT 'INVOICE',       COUNT(*) FROM INVOICE       UNION ALL
 SELECT 'INVOICE_DETAIL',COUNT(*) FROM INVOICE_DETAIL UNION ALL
 SELECT 'WARRANTY',      COUNT(*) FROM WARRANTY      UNION ALL
-SELECT 'WARRANTY_CLAIM',COUNT(*) FROM WARRANTY_CLAIM;
+SELECT 'WARRANTY_CLAIM',COUNT(*) FROM WARRANTY_CLAIM UNION ALL
+SELECT 'ACCOUNT',       COUNT(*) FROM ACCOUNT;
 GO

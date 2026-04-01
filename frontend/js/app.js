@@ -2,9 +2,6 @@
 // App.js - Main SPA Router & Role Management
 // ========================================
 
-// Global state
-window.__currentRole = 'admin';
-
 // Cache for dropdown data
 window.__cache = {
   categories: [],
@@ -14,26 +11,6 @@ window.__cache = {
   customers: [],
   employees: [],
 };
-
-// ====== ROLE MANAGEMENT ======
-function setRole(role) {
-  window.__currentRole = role;
-
-  // Update UI buttons
-  document.getElementById('btnRoleAdmin').classList.toggle('active', role === 'admin');
-  document.getElementById('btnRoleEmployee').classList.toggle('active', role === 'employee');
-
-  // Toggle admin-only columns
-  document.querySelectorAll('.col-admin').forEach(el => {
-    el.style.display = role === 'admin' ? '' : 'none';
-  });
-
-  // Refresh current tab to apply role
-  const activeTab = document.querySelector('.nav-item.active');
-  if (activeTab) {
-    switchTab(activeTab.dataset.tab);
-  }
-}
 
 // ====== TAB SWITCHING ======
 function switchTab(tabName) {
@@ -70,16 +47,20 @@ function switchTab(tabName) {
       loadWarranties();
       loadWarrantyClaims();
       break;
+    case 'providers':
+      loadProviders();
+      break;
   }
 }
 
 // Employees tab: access control
 function handleEmployeeTab() {
-  const role = getCurrentRole();
+  const user = getCurrentUser();
+  const isAdmin = user && user.role === 'manager';
   const denied = document.getElementById('employeeAccessDenied');
   const content = document.getElementById('employeeContent');
 
-  if (role !== 'admin') {
+  if (!isAdmin) {
     denied.style.display = 'block';
     content.style.display = 'none';
   } else {
@@ -117,21 +98,16 @@ function initTableSorting() {
   document.querySelectorAll('.table.data-table').forEach(table => {
     const headers = table.querySelectorAll('thead th');
     headers.forEach((th, index) => {
-      // Add cursor style
       th.style.cursor = 'pointer';
       th.title = 'Click để sắp xếp';
-      th.dataset.sortDir = ''; // none, asc, desc
+      th.dataset.sortDir = '';
 
-      // Chèn sẵn icon mặc định (tăng dần mờ mờ) vào tiêu đề
-      // Bao bọc label vào một div hoặc span để dễ kiểm soát (nếu chưa có)
       const label = th.innerHTML;
       th.innerHTML = `<span>${label}</span> <i class="bi bi-sort-down text-muted sort-icon ms-1"></i>`;
 
       th.addEventListener('click', () => {
-        // Determine intended direction (defaults to ASC)
         const isAsc = th.dataset.sortDir !== 'asc';
 
-        // Reset all headers in this table về trạng thái mặc định
         headers.forEach(h => {
           h.dataset.sortDir = '';
           const icon = h.querySelector('.sort-icon');
@@ -140,9 +116,7 @@ function initTableSorting() {
           }
         });
 
-        // Set active header
         th.dataset.sortDir = isAsc ? 'asc' : 'desc';
-        // Đổi icon của cột được click
         const activeIcon = th.querySelector('.sort-icon');
         if (activeIcon) {
           activeIcon.className = isAsc 
@@ -150,28 +124,21 @@ function initTableSorting() {
             : 'bi bi-sort-up sort-icon ms-1 text-primary';
         }
 
-        // Sort DOM
         sortTableRows(table, index, isAsc);
       });
     });
 
-    // We can also observe tbody changes to re-apply sort or clear headers
     const tbody = table.querySelector('tbody');
     if (tbody) {
       const observer = new MutationObserver(() => {
-        // Find if a header is currently sorted
         const activeTh = Array.from(headers).find(h => h.dataset.sortDir);
         if (activeTh) {
-          // If rows just changed (e.g. data loaded), re-apply sort silently
           const idx = Array.from(headers).indexOf(activeTh);
           const isAsc = activeTh.dataset.sortDir === 'asc';
-          // Disconnect temporarily to avoid infinite loops
           observer.disconnect();
           sortTableRows(table, idx, isAsc);
           observer.observe(tbody, { childList: true });
         } else {
-          // Default: trigger click on the very FIRST column to assure default ASC 
-          // (Only if table is not showing "Đang tải...")
           if (tbody.rows.length > 0 && tbody.rows[0].cells.length > 1 && !table.dataset.initialized) {
             table.dataset.initialized = 'true';
             headers[0].click();
@@ -187,14 +154,12 @@ function sortTableRows(table, colIndex, isAsc) {
   const tbody = table.querySelector('tbody');
   const rows = Array.from(tbody.querySelectorAll('tr'));
   
-  // Guard clause against empty/loading states
   if (rows.length === 0 || (rows.length === 1 && rows[0].cells.length === 1)) return;
 
   rows.sort((a, b) => {
     let valA = a.cells[colIndex]?.textContent.trim() || '';
     let valB = b.cells[colIndex]?.textContent.trim() || '';
     
-    // Check if numeric (strip everything except digits, minus, dot/comma)
     const numRegex = /^[0-9.,\s-₫]+$/;
     if (numRegex.test(valA) && numRegex.test(valB) && valA.match(/\d/) && valB.match(/\d/)) {
       valA = parseFloat(valA.replace(/[^\d.-]/g, ''));
@@ -212,18 +177,21 @@ function sortTableRows(table, colIndex, isAsc) {
   tbody.append(...rows);
 }
 
-// ====== INIT ======
-document.addEventListener('DOMContentLoaded', async () => {
+// ====== INIT APP (called after login) ======
+async function initApp() {
   initTableSorting();
   await loadDropdownData();
   
-  // Populate filter dropdowns
   populateSelect('filterCategory', window.__cache.categories, '-- Phân loại --');
   populateSelect('filterManufacturer', window.__cache.manufacturers, '-- Nhà sản xuất --');
 
-  // Load default tab
   switchTab('products');
-  setRole('admin');
+
+  // Apply role-based visibility
+  const user = getCurrentUser();
+  if (user) {
+    updateUserInfo(user);
+  }
 
   // Enter key search
   document.getElementById('productSearchKeyword')?.addEventListener('keyup', (e) => {
@@ -231,5 +199,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('customerSearchKeyword')?.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') searchCustomers();
+  });
+  document.getElementById('providerSearchKeyword')?.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') searchProviders();
+  });
+}
+
+// ====== PAGE LOAD ======
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if already logged in
+  if (checkAuth()) {
+    initApp();
+  }
+
+  // Enter key on login form
+  document.getElementById('loginPassword')?.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginUsername')?.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
   });
 });

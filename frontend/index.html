@@ -1,16 +1,48 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Hệ thống quản lý cửa hàng nhạc cụ SqlPtit">
-  <title>SqlPtit - Quản lý Cửa hàng Nhạc cụ</title>
+  <title>PTIT MUSIC - Quản lý Cửa hàng Nhạc cụ</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
+  <!-- ================== LOGIN SCREEN ================== -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card" id="loginCard">
+      <div class="login-logo">
+        <i class="bi bi-music-note-beamed"></i>
+        <h1>PTIT MUSIC</h1>
+        <p>Quản lý Cửa hàng Nhạc cụ</p>
+      </div>
+      <div id="loginError" class="login-error" style="display:none;"></div>
+      <div class="login-form">
+        <div class="form-group mb-3">
+          <label class="form-label"><i class="bi bi-person"></i> Tên đăng nhập</label>
+          <input type="text" id="loginUsername" class="form-control" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label"><i class="bi bi-lock"></i> Mật khẩu</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="123456"
+            autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary w-100 btn-login" onclick="doLogin()">
+          <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+        </button>
+      </div>
+      <div class="login-hint">
+        <small>Tài khoản mặc định: <strong>admin</strong> / <strong>123456</strong></small>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <nav id="sidebar" class="sidebar">
     <div class="sidebar-header">
@@ -21,16 +53,17 @@
       <small class="text-muted">Quản lý Nhạc cụ</small>
     </div>
 
-    <div class="role-switcher">
-      <label class="role-label">Vai trò hiện tại</label>
-      <div class="role-toggle">
-        <button id="btnRoleAdmin" class="role-btn active" onclick="setRole('admin')">
-          <i class="bi bi-shield-lock-fill"></i> Admin
-        </button>
-        <button id="btnRoleEmployee" class="role-btn" onclick="setRole('employee')">
-          <i class="bi bi-person-fill"></i> Nhân viên
-        </button>
+    <div class="user-info-panel">
+      <div class="user-avatar">
+        <i class="bi bi-person-circle"></i>
       </div>
+      <div class="user-details">
+        <span id="userDisplayName" class="user-name">—</span>
+        <span id="userDisplayRole" class="user-role-badge role-employee">—</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Đăng xuất">
+        <i class="bi bi-box-arrow-right"></i>
+      </button>
     </div>
 
     <ul class="nav-menu">
@@ -59,6 +92,10 @@
         <i class="bi bi-shield-check"></i>
         <span>Bảo hành</span>
       </li>
+      <li class="nav-item" data-tab="providers" onclick="switchTab('providers')">
+        <i class="bi bi-building"></i>
+        <span>Nhà cung cấp</span>
+      </li>
     </ul>
 
     <div class="sidebar-footer">
@@ -83,15 +120,22 @@
               <option value="id">Mã SP</option>
               <option value="name">Tên SP</option>
             </select>
-            <input type="text" id="productSearchKeyword" class="form-control search-input" placeholder="Nhập từ khóa tìm kiếm...">
+            <input type="text" id="productSearchKeyword" class="form-control search-input"
+              placeholder="Nhập từ khóa tìm kiếm...">
             <button class="btn btn-primary" onclick="searchProducts()">
               <i class="bi bi-search"></i> Tìm
             </button>
           </div>
         </div>
         <div class="action-group">
-          <button class="btn btn-outline-info" onclick="toggleProductFilter()">
+          <button class="btn btn-outline-info" onclick="toggleProductFilter()" style="border-width:3px">
             <i class="bi bi-funnel-fill"></i> Lọc
+          </button>
+          <button class="btn btn-outline-info" onclick="addCategory()" style="border-width:3px">
+            <i class="bi bi-tag-fill"></i> Thêm danh mục
+          </button>
+          <button class="btn btn-outline-info" onclick="addManufacturer()" style="border-width:3px">
+            <i class="bi bi-building"></i> Thêm NSX
           </button>
           <button class="btn btn-success" onclick="openAddProductModal()">
             <i class="bi bi-plus-lg"></i> Thêm sản phẩm
@@ -109,7 +153,8 @@
             <option value="">-- Nhà sản xuất --</option>
           </select>
           <button class="btn btn-info" onclick="filterProducts()"><i class="bi bi-funnel"></i> Áp dụng</button>
-          <button class="btn btn-outline-secondary" onclick="resetProductFilter()"><i class="bi bi-x-lg"></i> Xóa lọc</button>
+          <button class="btn btn-outline-secondary" onclick="resetProductFilter()"><i class="bi bi-x-lg"></i> Xóa
+            lọc</button>
         </div>
       </div>
 
@@ -128,7 +173,9 @@
             </tr>
           </thead>
           <tbody id="productsTableBody">
-            <tr><td colspan="7" class="text-center">Đang tải dữ liệu...</td></tr>
+            <tr>
+              <td colspan="7" class="text-center">Đang tải dữ liệu...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -142,7 +189,8 @@
       <div class="toolbar">
         <div class="search-group">
           <div class="input-group">
-            <input type="text" id="customerSearchKeyword" class="form-control search-input" placeholder="Tìm theo tên hoặc mã KH...">
+            <input type="text" id="customerSearchKeyword" class="form-control search-input"
+              placeholder="Tìm theo tên hoặc mã KH...">
             <button class="btn btn-primary" onclick="searchCustomers()">
               <i class="bi bi-search"></i> Tìm
             </button>
@@ -161,12 +209,14 @@
               <th>Mã KH</th>
               <th>Họ và Tên</th>
               <th>Giới tính</th>
-              <th>Địa chỉ</th>
               <th>SĐT</th>
+              <th>Địa chỉ</th>
             </tr>
           </thead>
           <tbody id="customersTableBody">
-            <tr><td colspan="5" class="text-center">Đang tải...</td></tr>
+            <tr>
+              <td colspan="5" class="text-center">Đang tải...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -178,7 +228,15 @@
         <h1><i class="bi bi-receipt-cutoff"></i> Quản lý Hóa đơn</h1>
       </div>
       <div class="toolbar">
-        <div class="search-group"></div>
+        <div class="search-group">
+          <div class="input-group">
+            <input type="text" id="invoiceSearchKeyword" class="form-control search-input"
+              placeholder="Tìm theo tên hoặc mã nhân viên...">
+            <button class="btn btn-primary" onclick="searchInvoices()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
         <div class="action-group">
           <button class="btn btn-success" onclick="openCreateInvoiceModal()">
             <i class="bi bi-plus-lg"></i> Tạo hóa đơn
@@ -196,7 +254,9 @@
             </tr>
           </thead>
           <tbody id="invoicesTableBody">
-            <tr><td colspan="4" class="text-center">Đang tải...</td></tr>
+            <tr>
+              <td colspan="4" class="text-center">Đang tải...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -208,7 +268,20 @@
         <h1><i class="bi bi-truck"></i> Quản lý Nhập kho</h1>
       </div>
       <div class="toolbar">
-        <div class="search-group"></div>
+        <div class="search-group">
+          <div class="input-group">
+            <select id="importSearchType" class="form-select search-select">
+              <option value="all">Tất cả</option>
+              <option value="employee">Nhân viên (Tên/Mã)</option>
+              <option value="provider">Nhà CC (Tên/Mã)</option>
+            </select>
+            <input type="text" id="importSearchKeyword" class="form-control search-input"
+              placeholder="Nhập từ khóa tìm kiếm...">
+            <button class="btn btn-primary" onclick="searchImports()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
         <div class="action-group">
           <button class="btn btn-success" onclick="openCreateImportModal()">
             <i class="bi bi-plus-lg"></i> Tạo phiếu nhập
@@ -226,7 +299,9 @@
             </tr>
           </thead>
           <tbody id="importsTableBody">
-            <tr><td colspan="4" class="text-center">Đang tải...</td></tr>
+            <tr>
+              <td colspan="4" class="text-center">Đang tải...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -253,18 +328,22 @@
         </div>
         <div class="table-container">
           <table class="table data-table">
-              <thead>
-                <tr>
-                  <th>Mã NV</th>
-                  <th>Mã Code</th>
-                  <th>Họ Tên</th>
-                  <th>Chức vụ</th>
-                  <th>Loại lao động</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
+            <thead>
+              <tr>
+                <th>Mã NV</th>
+                <th>Mã Code</th>
+                <th>Họ Tên</th>
+                <th>Chức vụ</th>
+                <th>Loại lao động</th>
+                <th>Tài khoản</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
             <tbody id="employeesTableBody">
-              <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+              <tr>
+                <td colspan="8" class="text-center">Đang tải...</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -277,7 +356,15 @@
         <h1><i class="bi bi-shield-check"></i> Quản lý Bảo hành</h1>
       </div>
       <div class="toolbar">
-        <div class="search-group"></div>
+        <div class="search-group">
+          <div class="input-group">
+            <input type="text" id="warrantySearchKeyword" class="form-control search-input"
+              placeholder="Tìm theo Serial Number...">
+            <button class="btn btn-primary" onclick="searchWarrantiesAndClaims()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
         <div class="action-group">
           <button class="btn btn-warning" onclick="openCreateClaimModal()">
             <i class="bi bi-tools"></i> Tạo yêu cầu sửa chữa
@@ -297,7 +384,9 @@
             </tr>
           </thead>
           <tbody id="warrantiesTableBody">
-            <tr><td colspan="6" class="text-center">Đang tải...</td></tr>
+            <tr>
+              <td colspan="6" class="text-center">Đang tải...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -319,7 +408,54 @@
             </tr>
           </thead>
           <tbody id="claimsTableBody">
-            <tr><td colspan="7" class="text-center">Đang tải...</td></tr>
+            <tr>
+              <td colspan="7" class="text-center">Đang tải...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================== TAB: NHÀ CUNG CẤP ================== -->
+    <section id="tab-providers" class="tab-content">
+      <div class="content-header">
+        <h1><i class="bi bi-building"></i> Quản lý Nhà cung cấp</h1>
+      </div>
+      <div class="toolbar">
+        <div class="search-group">
+          <div class="input-group">
+            <select id="providerSearchType" class="form-select search-select">
+              <option value="all">Tất cả</option>
+              <option value="id">Mã NCC</option>
+              <option value="name">Tên NCC</option>
+            </select>
+            <input type="text" id="providerSearchKeyword" class="form-control search-input"
+              placeholder="Nhập từ khóa tìm kiếm...">
+            <button class="btn btn-primary" onclick="searchProviders()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+          </div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-success" onclick="openAddProviderModal()">
+            <i class="bi bi-plus-lg"></i> Thêm NCC
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table data-table">
+          <thead>
+            <tr>
+              <th>Mã NCC</th>
+              <th>Tên nhà cung cấp</th>
+              <th>SĐT</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody id="providersTableBody">
+            <tr>
+              <td colspan="4" class="text-center">Đang tải...</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -414,6 +550,54 @@
     </div>
   </div>
 
+  <!-- Modal: Thêm Danh mục (req #3) -->
+  <div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-tag-fill"></i> Thêm danh mục mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên danh mục</label>
+            <input type="text" id="newCategoryName" class="form-control" placeholder="Ví dụ: Phụ kiện">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-primary btn-sm" onclick="submitNewCategory()">
+            <i class="bi bi-check-lg"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Nhà sản xuất (req #3) -->
+  <div class="modal fade" id="addManufacturerModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-building"></i> Thêm NSX mới</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên nhà sản xuất</label>
+            <input type="text" id="newManufacturerName" class="form-control" placeholder="Ví dụ: Yamaha">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-primary btn-sm" onclick="submitNewManufacturer()">
+            <i class="bi bi-check-lg"></i> Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Thêm/Sửa Khách hàng -->
   <div class="modal fade" id="customerModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -425,18 +609,18 @@
         <div class="modal-body">
           <input type="hidden" id="customerModalId">
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label">Họ</label>
               <input type="text" id="customerFirstName" class="form-control">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Tên đệm</label>
+              <input type="text" id="customerMiddleName" class="form-control">
+            </div>
+            <div class="col-md-4 mb-3">
               <label class="form-label">Tên</label>
               <input type="text" id="customerLastName" class="form-control">
             </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Tên đệm</label>
-            <input type="text" id="customerMiddleName" class="form-control">
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -451,9 +635,25 @@
               <input type="text" id="customerPhone" class="form-control">
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Tỉnh/Thành phố</label>
-            <input type="text" id="customerProvince" class="form-control">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Số nhà</label>
+              <input type="text" id="customerHouseNum" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Đường</label>
+              <input type="text" id="customerStreet" class="form-control">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Quận/Huyện</label>
+              <input type="text" id="customerDistrict" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tỉnh/Thành phố</label>
+              <input type="text" id="customerProvince" class="form-control">
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -616,28 +816,50 @@
         <div class="modal-body">
           <input type="hidden" id="empId">
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label">Họ</label>
               <input type="text" id="empFirstName" class="form-control">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Tên đệm</label>
+              <input type="text" id="empMiddleName" class="form-control">
+            </div>
+            <div class="col-md-4 mb-3">
               <label class="form-label">Tên</label>
               <input type="text" id="empLastName" class="form-control">
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Tên đệm</label>
-            <input type="text" id="empMiddleName" class="form-control">
-          </div>
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label">Giới tính</label>
               <select id="empGender" class="form-select">
                 <option value="Nam">Nam</option>
                 <option value="Nữ">Nữ</option>
               </select>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">SĐT</label>
+              <input type="text" id="empPhone" class="form-control">
+            </div>
+            <div class="col-md-4 mb-3" id="empPasswordGroup">
+              <label class="form-label">Mật khẩu TK</label>
+              <input type="text" id="empPassword" class="form-control" value="123456">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Số nhà</label>
+              <input type="text" id="empHouseNum" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Đường</label>
+              <input type="text" id="empStreet" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Quận/Huyện</label>
+              <input type="text" id="empDistrict" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
               <label class="form-label">Tỉnh/TP</label>
               <input type="text" id="empProvince" class="form-control">
             </div>
@@ -679,18 +901,60 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">Chọn phiếu bảo hành</label>
-            <select id="claimWarrantyId" class="form-select"></select>
+            <label class="form-label">Chọn phiếu bảo hành (Serial)</label>
+            <div class="autocomplete-wrap" id="claimSerialWrap">
+              <input class="form-control" id="claimWarrantyInput" autocomplete="off"
+                placeholder="Gõ Serial để tìm hoặc nhấn để xem danh sách..."
+                oninput="filterClaimDropdown(this.value)"
+                onfocus="filterClaimDropdown(this.value)"
+              >
+              <div class="autocomplete-dropdown" id="claimAutocompleteDropdown"></div>
+            </div>
+            <input type="hidden" id="claimWarrantyId">
           </div>
           <div class="mb-3">
             <label class="form-label">Mô tả lỗi</label>
-            <textarea id="claimDescription" class="form-control" rows="4" placeholder="Nhập mô tả lỗi sản phẩm..."></textarea>
+            <textarea id="claimDescription" class="form-control" rows="4"
+              placeholder="Nhập mô tả lỗi sản phẩm..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
           <button class="btn btn-warning" onclick="submitClaim()">
             <i class="bi bi-send"></i> Gửi yêu cầu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm/Sửa Nhà cung cấp -->
+  <div class="modal fade" id="providerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title" id="providerModalTitle"><i class="bi bi-building-add"></i> Nhà cung cấp</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="providerModalId">
+          <div class="mb-3">
+            <label class="form-label">Tên nhà cung cấp</label>
+            <input type="text" id="providerName" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" id="providerPhone" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="providerEmail" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button class="btn btn-success" id="providerModalSaveBtn" onclick="saveProvider()">
+            <i class="bi bi-check-lg"></i> Lưu
           </button>
         </div>
       </div>
@@ -709,6 +973,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
   <script src="js/app.js"></script>
   <script src="js/products.js"></script>
   <script src="js/customers.js"></script>
@@ -716,5 +981,7 @@
   <script src="js/imports.js"></script>
   <script src="js/employees.js"></script>
   <script src="js/warranties.js"></script>
+  <script src="js/providers.js"></script>
 </body>
+
 </html>

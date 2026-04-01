@@ -2,16 +2,6 @@
 // Customers Tab
 // ========================================
 
-// Định dạng địa chỉ đầy đủ: "house_num street, district, province"
-function formatAddress(c) {
-  const parts = [
-    c.house_num ? c.house_num + (c.street ? ' ' + c.street : '') : c.street,
-    c.district,
-    c.province,
-  ].filter(p => p && p.trim());
-  return parts.length ? parts.join(', ') : '—';
-}
-
 async function loadCustomers() {
   try {
     const res = await apiGet('/customers');
@@ -48,8 +38,8 @@ function renderCustomersTable(data) {
       <td><strong>${formatId(c.id)}</strong></td>
       <td>${c.full_name || '—'}</td>
       <td>${c.gender || '—'}</td>
-      <td>${formatAddress(c)}</td>
       <td>${c.phones.join(', ') || '—'}</td>
+      <td>${c.address || '—'}</td>
     </tr>
   `).join('');
 }
@@ -78,6 +68,9 @@ function openAddCustomerModal() {
   document.getElementById('customerLastName').value = '';
   document.getElementById('customerGender').value = 'Nam';
   document.getElementById('customerPhone').value = '';
+  document.getElementById('customerHouseNum').value = '';
+  document.getElementById('customerStreet').value = '';
+  document.getElementById('customerDistrict').value = '';
   document.getElementById('customerProvince').value = '';
   document.getElementById('customerModalSaveBtn').onclick = saveNewCustomer;
 
@@ -91,6 +84,9 @@ async function saveNewCustomer() {
     last_name: document.getElementById('customerLastName').value,
     gender: document.getElementById('customerGender').value,
     phone_num: document.getElementById('customerPhone').value,
+    house_num: document.getElementById('customerHouseNum').value,
+    street: document.getElementById('customerStreet').value,
+    district: document.getElementById('customerDistrict').value,
     province: document.getElementById('customerProvince').value,
   };
 
@@ -117,6 +113,9 @@ function openEditCustomerModal(customer) {
   document.getElementById('customerLastName').value = customer.last_name || '';
   document.getElementById('customerGender').value = customer.gender || 'Nam';
   document.getElementById('customerPhone').value = (customer.phones && customer.phones[0]) || customer.phone_num || '';
+  document.getElementById('customerHouseNum').value = customer.house_num || '';
+  document.getElementById('customerStreet').value = customer.street || '';
+  document.getElementById('customerDistrict').value = customer.district || '';
   document.getElementById('customerProvince').value = customer.province || '';
   document.getElementById('customerModalSaveBtn').onclick = updateCustomerInfo;
 
@@ -131,6 +130,9 @@ async function updateCustomerInfo() {
     last_name: document.getElementById('customerLastName').value,
     gender: document.getElementById('customerGender').value,
     phone_num: document.getElementById('customerPhone').value,
+    house_num: document.getElementById('customerHouseNum').value,
+    street: document.getElementById('customerStreet').value,
+    district: document.getElementById('customerDistrict').value,
     province: document.getElementById('customerProvince').value,
   };
 
