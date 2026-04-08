@@ -143,12 +143,12 @@ CREATE TABLE [WARRANTY_CLAIM] (
 )
 GO
 
-CREATE TABLE [ACCOUNT] 
-  [id] int PRIMARY KEY IDENTITY(1,1),
-  [employee_id] int UNIQUE,
+CREATE TABLE [ACCOUNT] (
+  [employee_id] int PRIMARY KEY,
   [username] nvarchar(255) UNIQUE NOT NULL,
   [password] nvarchar(255) NOT NULL,
   [role] nvarchar(50) NOT NULL DEFAULT 'employee'
+)
 GO
 
 ALTER TABLE [PERSON_PHONE] ADD FOREIGN KEY ([person_id]) REFERENCES [PERSON] ([id])

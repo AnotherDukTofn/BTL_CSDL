@@ -139,6 +139,10 @@ async function saveEmployee() {
   if (id) {
     // EDIT mode — includes address fields
     const body = {
+      first_name: document.getElementById('empFirstName').value,
+      middle_name: document.getElementById('empMiddleName').value,
+      last_name: document.getElementById('empLastName').value,
+      gender: document.getElementById('empGender').value,
       position,
       employment_type,
       phone_num: document.getElementById('empPhone').value,
