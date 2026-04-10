@@ -1,7 +1,7 @@
 // ========================================
 // Server.js - Express Entry Point
 // ========================================
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const { getPool } = require('./db');

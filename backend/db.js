@@ -2,7 +2,7 @@
 // Database Connection - SQL Server (mssql)
 // ========================================
 let sql = require('mssql');
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 if (process.env.DB_TRUSTED === 'true') {
   sql = require('mssql/msnodesqlv8');
@@ -18,7 +18,9 @@ const config = {
     enableArithAbort: true,
   },
   beforeConnect: (conn) => {
-    conn.conn_str = conn.conn_str.replace('SQL Server Native Client 11.0', 'ODBC Driver 17 for SQL Server');
+    if (conn && conn.conn_str) {
+      conn.conn_str = conn.conn_str.replace('SQL Server Native Client 11.0', 'ODBC Driver 17 for SQL Server');
+    }
   }
 };
 
