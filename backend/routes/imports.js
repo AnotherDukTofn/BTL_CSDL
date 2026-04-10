@@ -1,5 +1,5 @@
 // ========================================
-// Import Routes (Nhập kho)
+// Import Routes (Nhập kho) — Auto Serial Generation
 // ========================================
 const express = require('express');
 const router = express.Router();
@@ -53,12 +53,13 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// GET /api/imports/:id/details
+// GET /api/imports/:id/details — bao gồm serial numbers
 router.get('/:id/details', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
-    const result = await pool.request()
+
+    const detailResult = await pool.request()
       .input('id', sql.Int, parseInt(id))
       .query(`
         SELECT d.import_id, d.product_id, d.import_quantity, d.unit_price,
@@ -68,14 +69,34 @@ router.get('/:id/details', async (req, res) => {
         WHERE d.import_id = @id
       `);
 
-    res.json({ success: true, data: result.recordset });
+    // Lấy serial numbers của phiếu nhập này
+    const serialResult = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query(`
+        SELECT serial_number, product_id
+        FROM PRODUCT_SERIAL
+        WHERE import_id = @id
+      `);
+
+    const serialMap = {};
+    for (const s of serialResult.recordset) {
+      if (!serialMap[s.product_id]) serialMap[s.product_id] = [];
+      serialMap[s.product_id].push(s.serial_number);
+    }
+
+    const data = detailResult.recordset.map(d => ({
+      ...d,
+      serials: serialMap[d.product_id] || []
+    }));
+
+    res.json({ success: true, data });
   } catch (err) {
     console.error('GET /imports/:id/details error:', err);
     res.status(500).json({ success: false, message: 'Lỗi server!' });
   }
 });
 
-// POST /api/imports - Tạo phiếu nhập (Transaction)
+// POST /api/imports - Tạo phiếu nhập + AUTO GENERATE Serial Numbers
 router.post('/', async (req, res) => {
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
@@ -100,8 +121,9 @@ router.post('/', async (req, res) => {
 
     const importId = impResult.recordset[0].id;
 
-    // 2. Insert IMPORT_DETAIL (trigger sẽ tự cộng kho)
+    // 2. Insert IMPORT_DETAIL + Auto-generate PRODUCT_SERIAL
     for (const item of details) {
+      // Insert detail (trigger sẽ tự cộng kho + tính giá bình quân)
       await new sql.Request(transaction)
         .input('import_id', sql.Int, importId)
         .input('product_id', sql.Int, item.product_id)
@@ -111,6 +133,22 @@ router.post('/', async (req, res) => {
           INSERT INTO IMPORT_DETAIL (import_id, product_id, import_quantity, unit_price)
           VALUES (@import_id, @product_id, @import_quantity, @unit_price)
         `);
+
+      // Auto-generate serial numbers: SP{product_id}-IMP{import_id}-{STT}
+      const pidStr = String(item.product_id).padStart(3, '0');
+      const impStr = String(importId).padStart(3, '0');
+
+      for (let i = 1; i <= item.import_quantity; i++) {
+        const serial = `SP${pidStr}-IMP${impStr}-${String(i).padStart(3, '0')}`;
+        await new sql.Request(transaction)
+          .input('serial_number', sql.NVarChar, serial)
+          .input('product_id', sql.Int, item.product_id)
+          .input('import_id', sql.Int, importId)
+          .query(`
+            INSERT INTO PRODUCT_SERIAL (serial_number, product_id, import_id, sell_status)
+            VALUES (@serial_number, @product_id, @import_id, 1)
+          `);
+      }
     }
 
     await transaction.commit();

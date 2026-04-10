@@ -124,8 +124,11 @@ function openEditEmployeeModal(emp) {
   document.getElementById('empProvince').value = emp.province || '';
   document.getElementById('empPosition').value = emp.position || '';
   document.getElementById('empEmploymentType').value = emp.employment_type || '';
-  // Hide password field in edit mode
-  document.getElementById('empPasswordGroup').style.display = 'none';
+  
+  // Hiển thị lại trường password khi sửa, nếu không nhập gì thì không đổi
+  document.getElementById('empPassword').value = '';
+  document.getElementById('empPassword').placeholder = 'Bỏ trống nếu giữ nguyên';
+  document.getElementById('empPasswordGroup').style.display = '';
 
   new bootstrap.Modal(document.getElementById('employeeModal')).show();
 }
@@ -150,6 +153,7 @@ async function saveEmployee() {
       street: document.getElementById('empStreet').value,
       district: document.getElementById('empDistrict').value,
       province: document.getElementById('empProvince').value,
+      password: document.getElementById('empPassword').value
     };
     try {
       const res = await apiPut(`/employees/${id}`, body);

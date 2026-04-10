@@ -15,24 +15,29 @@ BEGIN
 END;
 GO
 
--- Trigger 2: Trừ tồn kho sau khi bán (an toàn với multi-row INSERT)
-CREATE TRIGGER trg_UpdateStockAfterExport
+-- Trigger 2: Trừ tồn kho sau khi bán (kiểm tra dựa trên PRODUCT_SERIAL thực tế)
+CREATE OR ALTER TRIGGER trg_UpdateStockAfterExport
 ON INVOICE_DETAIL
 AFTER INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Tổng hợp số lượng theo từng SP (xử lý đúng khi INSERT nhiều dòng cùng lúc)
+    -- Kiểm tra tồn kho dựa trên số serial thực tế còn trong kho (sell_status = 1)
     IF EXISTS (
         SELECT 1
-        FROM PRODUCT p
-        JOIN (
+        FROM (
             SELECT product_id, SUM(buy_quantity) AS total_qty
             FROM inserted
             GROUP BY product_id
-        ) agg ON p.id = agg.product_id
-        WHERE p.stock_quantity < agg.total_qty
+        ) agg
+        LEFT JOIN (
+            SELECT product_id, COUNT(*) AS available_qty
+            FROM PRODUCT_SERIAL
+            WHERE sell_status = 1
+            GROUP BY product_id
+        ) ps ON agg.product_id = ps.product_id
+        WHERE ISNULL(ps.available_qty, 0) < agg.total_qty
     )
     BEGIN
         RAISERROR (N'Lỗi: Số lượng tồn kho không đủ để bán!', 16, 1);
@@ -40,7 +45,7 @@ BEGIN
         RETURN;
     END
 
-    -- Trừ kho theo tổng số lượng mỗi SP
+    -- Cập nhật stock_quantity trên bảng PRODUCT để đồng bộ
     UPDATE p
     SET p.stock_quantity = p.stock_quantity - agg.total_qty
     FROM PRODUCT p
@@ -65,3 +70,11 @@ BEGIN
     INNER JOIN inserted i ON ps.serial_number = i.serial_number;
 END;
 GO
+
+SELECT p.id, p.name, p.stock_quantity,
+       SUM(CASE WHEN ps.sell_status = 1 THEN 1 ELSE 0 END) AS available_serials,
+       COUNT(ps.serial_number) AS total_serials
+FROM PRODUCT p
+LEFT JOIN PRODUCT_SERIAL ps ON ps.product_id = p.id
+GROUP BY p.id, p.name, p.stock_quantity
+ORDER BY p.id;

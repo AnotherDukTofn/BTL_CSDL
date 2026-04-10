@@ -8,7 +8,8 @@ const { sql, getPool } = require('../db');
 const BASE_SELECT = `
   SELECT p.id, p.name, p.category_id, p.manufacturer_id,
          c.name AS category_name, m.name AS manufacturer_name,
-         p.in_unit_price, p.out_unit_price, p.stock_quantity
+         p.in_unit_price, p.out_unit_price,
+         ISNULL((SELECT COUNT(*) FROM PRODUCT_SERIAL ps WHERE ps.product_id = p.id AND ps.sell_status = 1), 0) AS stock_quantity
   FROM PRODUCT p
   LEFT JOIN CATEGORY c ON p.category_id = c.id
   LEFT JOIN MANUFACTURER m ON p.manufacturer_id = m.id
@@ -126,6 +127,49 @@ router.put('/:id', async (req, res) => {
   } catch (err) {
     console.error('PUT /products error:', err);
     res.status(500).json({ success: false, message: 'Lỗi: ' + err.message });
+  }
+});
+
+// GET /api/products/:id/batches - Lấy tồn kho theo lô (Import)
+router.get('/:id/batches', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query(`
+        SELECT ps.import_id, i.create_time, idt.unit_price as exact_import_price, idt.import_quantity as original_quantity, COUNT(ps.serial_number) as stock_quantity
+        FROM PRODUCT_SERIAL ps
+        LEFT JOIN IMPORT_DETAIL idt ON ps.import_id = idt.import_id AND ps.product_id = idt.product_id
+        LEFT JOIN IMPORT i ON ps.import_id = i.id
+        WHERE ps.product_id = @id AND ps.sell_status = 1
+        GROUP BY ps.import_id, i.create_time, idt.unit_price, idt.import_quantity
+        ORDER BY i.create_time ASC
+      `);
+    res.json({ success: true, data: result.recordset });
+  } catch (err) {
+    console.error('GET /products/:id/batches error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server!' });
+  }
+});
+
+// GET /api/products/:id/available-serials - Danh sách serial còn trong kho
+router.get('/:id/available-serials', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query(`
+        SELECT ps.serial_number, ps.import_id
+        FROM PRODUCT_SERIAL ps
+        WHERE ps.product_id = @id AND ps.sell_status = 1
+        ORDER BY ps.import_id ASC, ps.serial_number ASC
+      `);
+    res.json({ success: true, data: result.recordset });
+  } catch (err) {
+    console.error('GET /products/:id/available-serials error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server!' });
   }
 });
 

@@ -48,7 +48,7 @@ async function searchInvoices() {
   }
 }
 
-// View invoice details
+// View invoice details — hiển thị cả serial numbers
 async function viewInvoiceDetails(id) {
   try {
     const res = await apiGet(`/invoices/${id}/details`);
@@ -77,9 +77,8 @@ async function viewInvoiceDetails(id) {
   }
 }
 
-// Create Invoice Modal
+// Create Invoice Modal — giao diện quen thuộc: chọn SP + SL
 async function openCreateInvoiceModal() {
-  // Load fresh data
   const [custRes, empRes, prodRes] = await Promise.all([
     apiGet('/customers'),
     apiGet('/employees'),
@@ -87,7 +86,6 @@ async function openCreateInvoiceModal() {
   ]);
 
   if (custRes.success) {
-    // Deduplicate customers
     const unique = {};
     custRes.data.forEach(c => {
       if (!unique[c.id]) unique[c.id] = c;
@@ -119,11 +117,11 @@ async function openCreateInvoiceModal() {
 
 function addInvoiceItem() {
   const container = document.getElementById('invoiceItems');
-  const idx = container.children.length;
   const products = window.__cache.products;
 
   const row = document.createElement('div');
   row.className = 'invoice-item-row';
+  row.style.flexWrap = 'wrap';
   row.innerHTML = `
     <div class="form-group" style="flex:3">
       <label>Sản phẩm</label>
@@ -143,14 +141,55 @@ function addInvoiceItem() {
     <button class="btn-remove" onclick="this.parentElement.remove()">
       <i class="bi bi-trash"></i>
     </button>
+    <div class="form-group" style="flex-basis:100%; margin-top:4px; display:none;" class="inv-serial-group">
+      <label style="font-size:0.75rem; color:#aaa;"><i class="bi bi-upc-scan"></i> Chọn Serial (giữ Ctrl để chọn nhiều, bỏ trống = tự động FIFO)</label>
+      <select multiple class="form-select form-select-sm inv-serials" size="3" style="font-size:0.75rem;" onchange="onSerialSelectionChange(this)">
+      </select>
+    </div>
   `;
   container.appendChild(row);
 }
 
-function onInvoiceProductChange(select) {
+async function onInvoiceProductChange(select) {
   const option = select.options[select.selectedIndex];
-  const priceInput = select.closest('.invoice-item-row').querySelector('.inv-price');
+  const row = select.closest('.invoice-item-row');
+  const priceInput = row.querySelector('.inv-price');
   priceInput.value = option.dataset.price || '';
+
+  // Load available serials
+  const serialGroup = row.querySelector('.inv-serials').parentElement;
+  const serialSelect = row.querySelector('.inv-serials');
+  const productId = select.value;
+
+  if (!productId) {
+    serialGroup.style.display = 'none';
+    serialSelect.innerHTML = '';
+    return;
+  }
+
+  try {
+    const res = await apiGet(`/products/${productId}/available-serials`);
+    if (res.success && res.data.length) {
+      serialSelect.innerHTML = res.data.map(s =>
+        `<option value="${s.serial_number}">🏷️ ${s.serial_number} (Lô #${s.import_id})</option>`
+      ).join('');
+      serialGroup.style.display = 'block';
+    } else {
+      serialGroup.style.display = 'none';
+      serialSelect.innerHTML = '';
+    }
+  } catch (err) {
+    serialGroup.style.display = 'none';
+  }
+}
+
+function onSerialSelectionChange(serialSelect) {
+  const row = serialSelect.closest('.invoice-item-row');
+  const qtyInput = row.querySelector('.inv-qty');
+  const selected = serialSelect.selectedOptions.length;
+  if (selected > 0) {
+    qtyInput.value = selected;
+  }
 }
 
 async function submitInvoice() {
@@ -164,14 +203,35 @@ async function submitInvoice() {
     return;
   }
 
-  const rows = document.querySelectorAll('.invoice-item-row');
+  const rows = document.querySelectorAll('#invoiceItems .invoice-item-row');
   const details = [];
   for (const row of rows) {
     const product_id = parseInt(row.querySelector('.inv-product').value);
     const buy_quantity = parseInt(row.querySelector('.inv-qty').value);
     const unit_price = parseFloat(row.querySelector('.inv-price').value);
-    if (product_id && buy_quantity > 0) {
-      details.push({ product_id, buy_quantity, unit_price });
+
+    if (product_id) {
+      if (!buy_quantity || buy_quantity <= 0) {
+        errorDiv.textContent = 'Số lượng bán phải lớn hơn 0!';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      // Thu thập serial đã chọn (nếu có)
+      const serialSelect = row.querySelector('.inv-serials');
+      const selectedSerials = [];
+      if (serialSelect) {
+        for (const opt of serialSelect.selectedOptions) {
+          selectedSerials.push(opt.value);
+        }
+      }
+
+      details.push({
+        product_id,
+        buy_quantity,
+        unit_price: unit_price || 0,
+        serials: selectedSerials.length > 0 ? selectedSerials : undefined
+      });
     }
   }
 
@@ -184,7 +244,7 @@ async function submitInvoice() {
   try {
     const res = await apiPost('/invoices', { customer_id, employee_id, details });
     if (res.success) {
-      showToast('Tạo hóa đơn thành công!', 'success');
+      showToast(res.message, 'success');
       bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
       loadInvoices();
     } else {

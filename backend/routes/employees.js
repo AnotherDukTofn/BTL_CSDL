@@ -143,6 +143,14 @@ router.put('/:id', async (req, res) => {
         .query(`INSERT INTO PERSON_PHONE (person_id, phone_num) VALUES (@person_id, @phone_num)`);
     }
 
+    // Update ACCOUNT (password) if provided
+    if (req.body.password && req.body.password.trim() !== '') {
+      await new sql.Request(transaction)
+        .input('employee_id', sql.Int, parseInt(id))
+        .input('password', sql.NVarChar, req.body.password)
+        .query(`UPDATE ACCOUNT SET password = @password WHERE employee_id = @employee_id`);
+    }
+
     await transaction.commit();
     res.json({ success: true, message: 'Cập nhật thành công!' });
   } catch (err) {

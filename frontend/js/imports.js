@@ -52,7 +52,12 @@ async function viewImportDetails(id) {
       tbody.innerHTML = res.data.map(d => {
         const sub = d.import_quantity * d.unit_price;
         total += sub;
-        return `<tr><td>${d.product_name}</td><td>${d.import_quantity}</td><td class="price">${formatPrice(d.unit_price)}</td><td class="price">${formatPrice(sub)}</td></tr>`;
+        return `<tr>
+          <td>${d.product_name}</td>
+          <td>${d.import_quantity}</td>
+          <td class="price">${formatPrice(d.unit_price)}</td>
+          <td class="price">${formatPrice(sub)}</td>
+        </tr>`;
       }).join('');
       document.getElementById('importDetailTotal').textContent = `Tổng cộng: ${formatPrice(total)}`;
       new bootstrap.Modal(document.getElementById('importDetailModal')).show();
@@ -85,8 +90,8 @@ function addImportItem() {
     <div class="form-group" style="flex:3"><label>Sản phẩm</label>
       <select class="form-select form-select-sm imp-product"><option value="">-- Chọn --</option>${prods.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
     </div>
-    <div class="form-group" style="flex:1"><label>SL</label><input type="number" class="form-control form-control-sm imp-qty" min="1" value="1"></div>
-    <div class="form-group" style="flex:1"><label>Đơn giá</label><input type="number" class="form-control form-control-sm imp-price"></div>
+    <div class="form-group" style="flex:1"><label>SL</label><input type="number" class="form-control form-control-sm imp-qty" min="1" step="1" value="1"></div>
+    <div class="form-group" style="flex:1"><label>Đơn giá</label><input type="number" class="form-control form-control-sm imp-price" min="0" step="any" placeholder="VNĐ"></div>
     <button class="btn-remove" onclick="this.parentElement.remove()"><i class="bi bi-trash"></i></button>`;
   c.appendChild(row);
 }
@@ -96,13 +101,32 @@ async function submitImport() {
   const employee_id = parseInt(document.getElementById('importEmployee').value);
   if (!provider_id || !employee_id) { showToast('Chọn NCC và NV!', 'error'); return; }
 
+  let hasError = false;
   const details = [];
   document.querySelectorAll('#importItems .invoice-item-row').forEach(row => {
-    const pid = parseInt(row.querySelector('.imp-product').value);
-    const qty = parseInt(row.querySelector('.imp-qty').value);
-    const price = parseFloat(row.querySelector('.imp-price').value);
-    if (pid && qty > 0 && price > 0) details.push({ product_id: pid, import_quantity: qty, unit_price: price });
+    const productSelect = row.querySelector('.imp-product');
+    const qtyInput = row.querySelector('.imp-qty');
+    const priceInput = row.querySelector('.imp-price');
+    if (!productSelect || !qtyInput || !priceInput) return;
+
+    const pid = parseInt(productSelect.value);
+    if (!pid) return; // Bỏ qua hàng chưa chọn sản phẩm
+
+    const qty = parseInt(qtyInput.value);
+    const price = parseFloat(priceInput.value);
+
+    if (!Number.isFinite(qty) || qty <= 0) {
+      hasError = true;
+      console.warn('Import validation: qty invalid', qtyInput.value);
+    } else if (!Number.isFinite(price) || price < 0) {
+      hasError = true;
+      console.warn('Import validation: price invalid', priceInput.value);
+    } else {
+      details.push({ product_id: pid, import_quantity: qty, unit_price: price });
+    }
   });
+
+  if (hasError) { showToast('Vui lòng nhập đầy đủ Số lượng (>0) và Đơn giá (≥0) hợp lệ!', 'error'); return; }
   if (!details.length) { showToast('Thêm ít nhất 1 SP!', 'error'); return; }
 
   try {

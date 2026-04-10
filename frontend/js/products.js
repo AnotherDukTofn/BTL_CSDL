@@ -19,7 +19,7 @@ function renderProductsTable(data) {
   const isAdmin = user && user.role === 'manager';
 
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Không có sản phẩm nào.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có sản phẩm nào.</td></tr>';
     return;
   }
 
@@ -29,7 +29,6 @@ function renderProductsTable(data) {
       <td>${p.name}</td>
       <td>${p.category_name || '—'}</td>
       <td>${p.manufacturer_name || '—'}</td>
-      <td class="col-admin price" style="display:${isAdmin ? '' : 'none'}">${formatPrice(p.in_unit_price)}</td>
       <td class="price">${formatPrice(p.out_unit_price)}</td>
       <td>${stockBadge(p.stock_quantity)}</td>
     </tr>
@@ -99,6 +98,31 @@ function openEditProductModal(product) {
   document.getElementById('editProductPrice').disabled = !isAdmin;
   document.getElementById('editPriceNote').style.display = isAdmin ? 'none' : 'block';
 
+  // Load Inventory Details (Batches)
+  const tbody = document.getElementById('editProductSerialsBody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Đang tải...</td></tr>';
+    apiGet(`/products/${product.id}/batches`).then(res => {
+      if (res.success) {
+        if (!res.data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Hết hàng trong kho</td></tr>';
+        } else {
+          tbody.innerHTML = res.data.map(b => `
+            <tr>
+              <td><strong>#${b.import_id}</strong></td>
+              <td>${formatDateTime(b.create_time).split(' ')[0]}</td>
+              <td class="text-center" style="color: #fff;">${b.original_quantity || '-'}</td>
+              <td class="text-center" style="color: #fff;"><strong>${b.stock_quantity}</strong></td>
+              <td class="price">${isAdmin ? formatPrice(b.exact_import_price) : '***'}</td>
+            </tr>
+          `).join('');
+        }
+      }
+    }).catch(err => {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Lỗi tải dữ liệu kho</td></tr>';
+    });
+  }
+
   new bootstrap.Modal(document.getElementById('editProductModal')).show();
 }
 
@@ -128,7 +152,6 @@ async function updateProduct() {
 // Add Modal
 function openAddProductModal() {
   document.getElementById('addProductName').value = '';
-  document.getElementById('addProductInPrice').value = '';
   document.getElementById('addProductOutPrice').value = '';
   document.getElementById('addProductStock').value = '0';
 
@@ -143,7 +166,6 @@ async function saveProduct() {
     name: document.getElementById('addProductName').value,
     category_id: parseInt(document.getElementById('addProductCategory').value) || null,
     manufacturer_id: parseInt(document.getElementById('addProductManufacturer').value) || null,
-    in_unit_price: parseFloat(document.getElementById('addProductInPrice').value) || 0,
     out_unit_price: parseFloat(document.getElementById('addProductOutPrice').value) || 0,
     stock_quantity: parseInt(document.getElementById('addProductStock').value) || 0,
   };

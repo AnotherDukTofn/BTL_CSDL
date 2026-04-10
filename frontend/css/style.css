@@ -386,7 +386,8 @@ body {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: var(--shadow-sm);
 }
 
@@ -1144,4 +1145,119 @@ body {
 .btn-logout:hover {
   background: var(--danger);
   color: white;
+}
+
+/* ========== SERIAL NUMBER STYLES ========== */
+
+/* Serial tag (chip) — dùng trong chi tiết phiếu nhập/hóa đơn */
+.serial-tag {
+  display: inline-block;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-primary);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin: 2px 4px 2px 0;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.serial-tag-removable {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.serial-tag-removable:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.serial-tag-removable i {
+  margin-left: 4px;
+  font-size: 0.65rem;
+}
+
+.serial-cell {
+  padding: 4px 16px 10px !important;
+  border-bottom: 2px solid var(--border-color) !important;
+}
+
+/* Serial inputs container — dùng trong form nhập kho */
+.import-item-block {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.import-item-block .invoice-item-row {
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.serial-inputs-container {
+  padding: 10px 12px;
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.serial-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.serial-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.serial-input {
+  flex: 1 1 180px;
+  max-width: 220px;
+  font-family: 'JetBrains Mono', 'Consolas', monospace !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.04em;
+}
+
+/* Invoice serial groups — hiển thị serial đã chọn khi tạo hóa đơn */
+.invoice-serial-group {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.invoice-serial-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-hover);
+  font-size: 0.88rem;
+}
+
+.serial-tags-wrap {
+  padding: 8px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.invoice-serial-total {
+  text-align: right;
+  padding: 12px 14px;
+  font-size: 1rem;
+  color: var(--accent-primary);
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
 }

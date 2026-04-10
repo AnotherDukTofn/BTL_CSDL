@@ -1,5 +1,5 @@
 // ========================================
-// Invoice Routes
+// Invoice Routes — Auto Serial FIFO + Auto Warranty
 // ========================================
 const express = require('express');
 const router = express.Router();
@@ -55,7 +55,7 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// GET /api/invoices/:id/details
+// GET /api/invoices/:id/details — bao gồm serial numbers đã bán
 router.get('/:id/details', async (req, res) => {
   try {
     const { id } = req.params;
@@ -70,14 +70,35 @@ router.get('/:id/details', async (req, res) => {
         WHERE d.invoice_id = @id
       `);
 
-    res.json({ success: true, data: result.recordset });
+    // Lấy serial đã bán trong hóa đơn này (từ WARRANTY)
+    const serialResult = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query(`
+        SELECT w.serial_number, w.product_id
+        FROM WARRANTY w
+        WHERE w.invoice_id = @id
+      `);
+
+    const serialMap = {};
+    for (const s of serialResult.recordset) {
+      if (!serialMap[s.product_id]) serialMap[s.product_id] = [];
+      serialMap[s.product_id].push(s.serial_number);
+    }
+
+    const data = result.recordset.map(d => ({
+      ...d,
+      serials: serialMap[d.product_id] || []
+    }));
+
+    res.json({ success: true, data });
   } catch (err) {
     console.error('GET /invoices/:id/details error:', err);
     res.status(500).json({ success: false, message: 'Lỗi server!' });
   }
 });
 
-// POST /api/invoices - Tạo hóa đơn mới (Transaction)
+// POST /api/invoices - Tạo hóa đơn: nhận SP+SL, tự gán Serial FIFO + auto WARRANTY
+// Body: { customer_id, employee_id, details: [{ product_id, buy_quantity, unit_price }] }
 router.post('/', async (req, res) => {
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
@@ -104,6 +125,20 @@ router.post('/', async (req, res) => {
 
     // 2. Insert INVOICE_DETAIL (trigger sẽ tự trừ kho)
     for (const item of details) {
+      // Fail-fast: kiểm tra số serial còn trong kho trước khi insert INVOICE_DETAIL
+      // (Trigger cũng kiểm tra, nhưng làm sớm để trả lỗi rõ ràng và tránh side-effects)
+      const availResult = await new sql.Request(transaction)
+        .input('product_id', sql.Int, item.product_id)
+        .query(`
+          SELECT COUNT(*) AS available_qty
+          FROM PRODUCT_SERIAL WITH (UPDLOCK, HOLDLOCK)
+          WHERE product_id = @product_id AND sell_status = 1
+        `);
+      const availableQty = availResult.recordset?.[0]?.available_qty ?? 0;
+      if (availableQty < item.buy_quantity) {
+        throw new Error('Lỗi: Số lượng tồn kho không đủ để bán!');
+      }
+
       await new sql.Request(transaction)
         .input('invoice_id', sql.Int, invoiceId)
         .input('product_id', sql.Int, item.product_id)
@@ -113,14 +148,92 @@ router.post('/', async (req, res) => {
           INSERT INTO INVOICE_DETAIL (invoice_id, product_id, buy_quantity, unit_price)
           VALUES (@invoice_id, @product_id, @buy_quantity, @unit_price)
         `);
+
+      // 3. Serial assignment: manual selection or FIFO fallback
+      let assignedSerials = [];
+
+      if (item.serials && item.serials.length > 0) {
+        // ——— Thu ngân đã chọn serial cụ thể ———
+        // Validate: kiểm tra serial có thuộc product này và còn trong kho không
+        for (const sn of item.serials) {
+          const check = await new sql.Request(transaction)
+            .input('serial_number', sql.NVarChar, sn)
+            .input('product_id', sql.Int, item.product_id)
+            .query(`
+              SELECT serial_number FROM PRODUCT_SERIAL
+              WHERE serial_number = @serial_number AND product_id = @product_id AND sell_status = 1
+            `);
+          if (!check.recordset.length) {
+            throw new Error(`Serial "${sn}" không hợp lệ hoặc đã bán!`);
+          }
+          assignedSerials.push({ serial_number: sn });
+        }
+
+        // Nếu chọn tay ít hơn buy_quantity, vét thêm bằng FIFO
+        const remaining = item.buy_quantity - assignedSerials.length;
+        if (remaining > 0) {
+          const chosenList = item.serials.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
+          const fifoResult = await new sql.Request(transaction)
+            .input('product_id', sql.Int, item.product_id)
+            .input('qty', sql.Int, remaining)
+            .query(`
+              SELECT TOP (@qty) serial_number
+              FROM PRODUCT_SERIAL
+              WHERE product_id = @product_id AND sell_status = 1
+                AND serial_number NOT IN (${chosenList})
+              ORDER BY serial_number ASC
+            `);
+          assignedSerials = assignedSerials.concat(fifoResult.recordset);
+        }
+      } else {
+        // ——— Không chọn serial → auto FIFO ———
+        const serialResult = await new sql.Request(transaction)
+          .input('product_id', sql.Int, item.product_id)
+          .input('qty', sql.Int, item.buy_quantity)
+          .query(`
+            SELECT TOP (@qty) serial_number
+            FROM PRODUCT_SERIAL
+            WHERE product_id = @product_id AND sell_status = 1
+            ORDER BY serial_number ASC
+          `);
+        assignedSerials = serialResult.recordset;
+      }
+
+      if (assignedSerials.length < item.buy_quantity) {
+        throw new Error('Lỗi: Số lượng tồn kho không đủ để bán!');
+      }
+
+      // 4. Đổi sell_status = 0 + Tạo WARRANTY cho từng serial
+      // Lấy warranty_months 1 lần cho sản phẩm
+      const prodInfo = await new sql.Request(transaction)
+        .input('product_id', sql.Int, item.product_id)
+        .query(`SELECT ISNULL(warranty_months, 12) AS wm FROM PRODUCT WHERE id = @product_id`);
+      const warrantyMonths = prodInfo.recordset[0]?.wm || 12;
+
+      for (const row of assignedSerials) {
+        await new sql.Request(transaction)
+          .input('serial_number', sql.NVarChar, row.serial_number)
+          .query(`UPDATE PRODUCT_SERIAL SET sell_status = 0 WHERE serial_number = @serial_number`);
+
+        await new sql.Request(transaction)
+          .input('invoice_id', sql.Int, invoiceId)
+          .input('product_id', sql.Int, item.product_id)
+          .input('serial_number', sql.NVarChar, row.serial_number)
+          .input('warranty_months', sql.Int, warrantyMonths)
+          .query(`
+            INSERT INTO WARRANTY (invoice_id, product_id, serial_number, start_date, end_date)
+            VALUES (@invoice_id, @product_id, @serial_number,
+                    CAST(GETDATE() AS date),
+                    CAST(DATEADD(month, @warranty_months, GETDATE()) AS date))
+          `);
+      }
     }
 
     await transaction.commit();
-    res.json({ success: true, message: 'Tạo hóa đơn thành công!' });
+    res.json({ success: true, message: 'Tạo hóa đơn thành công! Bảo hành đã được kích hoạt tự động.' });
   } catch (err) {
     try { await transaction.rollback(); } catch (e) {}
     console.error('POST /invoices error:', err);
-    // Trả lỗi trigger (ví dụ: hết hàng)
     const msg = err.message.includes('tồn kho') ? err.message : 'Lỗi: ' + err.message;
     res.status(500).json({ success: false, message: msg });
   }

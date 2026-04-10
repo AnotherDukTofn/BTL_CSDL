@@ -77,7 +77,8 @@ CREATE TABLE [PRODUCT] (
   [manufacturer_id] int,
   [in_unit_price] decimal(18,2),
   [out_unit_price] decimal(18,2),
-  [stock_quantity] int DEFAULT 0
+  [stock_quantity] int DEFAULT 0,
+  [warranty_months] int DEFAULT 12
 )
 GO
 
