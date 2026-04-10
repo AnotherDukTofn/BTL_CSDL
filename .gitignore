@@ -1,6 +1,6 @@
 # ====== NODE.JS ======
-backend/node_modules/
 node_modules/
+backend/node_modules/
 
 # ====== MẬT KHẨU / CẤU HÌNH ======
 .env
@@ -8,6 +8,7 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
 
 # ====== LOGS TẠM ======
 npm-debug.log*
@@ -16,7 +17,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 # ====== IDE / HỆ ĐIỀU HÀNH ======
-# Các thư mục ẩn tự sinh ra của phần mềm code (VS Code, IntelliJ)
 .vscode/
 .idea/
 *.suo
@@ -34,3 +34,4 @@ backend/dist/
 backend/build/
 .next/
 out/
+.gitnexus
