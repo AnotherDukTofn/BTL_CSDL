@@ -33,14 +33,20 @@ if (process.env.DB_TRUSTED === 'true') {
   config.password = process.env.DB_PASSWORD || '123456';
 }
 
-let pool;
+let poolPromise;
 
-async function getPool() {
-  if (!pool) {
-    pool = await sql.connect(config);
-    console.log('✅ Đã kết nối SQL Server:', config.database);
+function getPool() {
+  if (!poolPromise) {
+    poolPromise = sql.connect(config).then(pool => {
+      console.log('✅ Đã kết nối SQL Server:', config.database);
+      return pool;
+    }).catch(err => {
+      poolPromise = null;
+      console.error('Lỗi kết nối CSDL:', err);
+      throw err;
+    });
   }
-  return pool;
+  return poolPromise;
 }
 
 module.exports = { sql, getPool };
