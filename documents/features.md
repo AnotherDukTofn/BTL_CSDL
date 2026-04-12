@@ -508,7 +508,7 @@ UPDATE WARRANTY_CLAIM SET status = @status WHERE id = @id
 
 ---
 
-## Phụ lục: Trigger CSDL liên quan (`Databases/03_TRIGGERS.sql`)
+## Phụ lục: Trigger CSDL liên quan (`Databases/02_TRIGGERS.sql`)
 
 - **Sau nhập (`IMPORT_DETAIL`):** cộng `PRODUCT.stock_quantity` theo `import_quantity`.
 - **Sau bán (`INVOICE_DETAIL`):** kiểm tra đủ serial `sell_status = 1` theo tổng `buy_quantity`; nếu đủ thì trừ `PRODUCT.stock_quantity`.
