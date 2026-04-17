@@ -16,9 +16,9 @@ GO
 
 CREATE TABLE [PERSON] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [first_name] nvarchar(255),
+  [first_name] nvarchar(255) NOT NULL,
   [middle_name] nvarchar(255),
-  [last_name] nvarchar(255),
+  [last_name] nvarchar(255) NOT NULL,
   [gender] nvarchar(255),
   [date_of_birth] date,
   [province] nvarchar(255),
@@ -29,118 +29,118 @@ CREATE TABLE [PERSON] (
 GO
 
 CREATE TABLE [PERSON_PHONE] (
-  [person_id] int,
-  [phone_num] nvarchar(255),
+  [person_id] int NOT NULL,
+  [phone_num] nvarchar(255) NOT NULL,
   PRIMARY KEY ([person_id], [phone_num])
 )
 GO
 
 CREATE TABLE [CUSTOMER] (
   [id] int PRIMARY KEY,
-  [customer_code] nvarchar(255) UNIQUE
+  [customer_code] nvarchar(255) UNIQUE NOT NULL
 )
 GO
 
 CREATE TABLE [EMPLOYEE] (
   [id] int PRIMARY KEY,
-  [employee_code] nvarchar(255) UNIQUE,
+  [employee_code] nvarchar(255) UNIQUE NOT NULL,
   [employment_type] nvarchar(255) NOT NULL,
   [position] nvarchar(255) NOT NULL,
-  [is_active] bit 
+  [is_active] bit NOT NULL DEFAULT 1
 )
 GO
 
 CREATE TABLE [PROVIDER] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [name] nvarchar(255),
+  [name] nvarchar(255) NOT NULL,
   [email] nvarchar(255),
-  [phone] nvarchar(255)
+  [phone] nvarchar(255) NOT NULL
 )
 GO
 
 CREATE TABLE [CATEGORY] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [name] nvarchar(255)
+  [name] nvarchar(255) NOT NULL
 )
 GO
 
 CREATE TABLE [MANUFACTURER] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [name] nvarchar(255)
+  [name] nvarchar(255) NOT NULL
 )
 GO
 
 CREATE TABLE [PRODUCT] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [name] nvarchar(255),
-  [category_id] int,
+  [name] nvarchar(255) NOT NULL,
+  [category_id] int NOT NULL,
   [manufacturer_id] int,
-  [in_unit_price] decimal(18,2),
-  [out_unit_price] decimal(18,2),
-  [stock_quantity] int DEFAULT 0,
-  [warranty_months] int DEFAULT 12
+  [in_unit_price] decimal(18,2) NOT NULL,
+  [out_unit_price] decimal(18,2) NOT NULL,
+  [stock_quantity] int NOT NULL DEFAULT 0,
+  [warranty_months] int NOT NULL DEFAULT 12
 )
 GO
 
 CREATE TABLE [IMPORT] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [employee_id] int,
-  [provider_id] int,
-  [create_time] datetime DEFAULT GETDATE()
+  [employee_id] int NOT NULL,
+  [provider_id] int NOT NULL,
+  [create_time] datetime NOT NULL DEFAULT GETDATE()
 )
 GO
 
 CREATE TABLE [IMPORT_DETAIL] (
-  [import_id] int,
-  [product_id] int,
-  [import_quantity] int,
-  [unit_price] decimal(18,2),
+  [import_id] int NOT NULL,
+  [product_id] int NOT NULL,
+  [import_quantity] int NOT NULL,
+  [unit_price] decimal(18,2) NOT NULL,
   PRIMARY KEY ([import_id], [product_id])
 )
 GO
 
 CREATE TABLE [PRODUCT_SERIAL] (
   [serial_number] nvarchar(255) PRIMARY KEY,
-  [product_id] int,
-  [import_id] int,
-  [sell_status] bit DEFAULT 1 -- 1: In_Stock
+  [product_id] int NOT NULL,
+  [import_id] int NOT NULL,
+  [sell_status] bit NOT NULL DEFAULT 1 -- 1: In_Stock
 )
 GO
 
 CREATE TABLE [INVOICE] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [customer_id] int,
-  [employee_id] int,
-  [create_time] datetime DEFAULT GETDATE()
+  [customer_id] int NOT NULL,
+  [employee_id] int NOT NULL,
+  [create_time] datetime NOT NULL DEFAULT GETDATE()
 )
 GO
 
 CREATE TABLE [INVOICE_DETAIL] (
-  [invoice_id] int,
-  [product_id] int,
-  [buy_quantity] int,
-  [unit_price] decimal(18,2),
+  [invoice_id] int NOT NULL,
+  [product_id] int NOT NULL,
+  [buy_quantity] int NOT NULL,
+  [unit_price] decimal(18,2) NOT NULL,
   PRIMARY KEY ([invoice_id], [product_id])
 )
 GO
 
 CREATE TABLE [WARRANTY] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [invoice_id] int,
-  [product_id] int,
-  [serial_number] nvarchar(255),
-  [start_date] date,
-  [end_date] date
+  [invoice_id] int NOT NULL,
+  [product_id] int NOT NULL,
+  [serial_number] nvarchar(255) NOT NULL,
+  [start_date] date NOT NULL,
+  [end_date] date NOT NULL
 )
 GO
 
 CREATE TABLE [WARRANTY_CLAIM] (
   [id] int PRIMARY KEY IDENTITY(1,1),
-  [warranty_id] int,
-  [employee_id] int,
-  [claim_date] date,
+  [warranty_id] int NOT NULL,
+  [employee_id] int NOT NULL,
+  [claim_date] date NOT NULL,
   [description] nvarchar(255),
-  [status] nvarchar(255)
+  [status] nvarchar(255) NOT NULL
 )
 GO
 

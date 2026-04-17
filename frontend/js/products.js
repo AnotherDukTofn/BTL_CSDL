@@ -109,7 +109,7 @@ function openEditProductModal(product) {
         } else {
           tbody.innerHTML = res.data.map(b => `
             <tr>
-              <td><strong>#${b.import_id}</strong></td>
+              <td><strong>${formatId(b.import_id)}</strong></td>
               <td>${formatDateTime(b.create_time).split(' ')[0]}</td>
               <td class="text-center" style="color: #fff;">${b.original_quantity || '-'}</td>
               <td class="text-center" style="color: #fff;"><strong>${b.stock_quantity}</strong></td>

@@ -1,0 +1,150 @@
+Table PERSON {
+  id int [pk, increment]
+  first_name nvarchar(255) [not null]
+  middle_name nvarchar(255)
+  last_name nvarchar(255) [not null]
+  gender nvarchar(255)
+  date_of_birth date
+  province nvarchar(255)
+  district nvarchar(255)
+  street nvarchar(255)
+  house_num nvarchar(255)
+}
+
+Table PERSON_PHONE {
+  person_id int [pk]
+  phone_num nvarchar(255) [pk]
+}
+
+Table CUSTOMER {
+  id int [pk]
+  customer_code nvarchar(255) [unique, not null]
+}
+
+Table EMPLOYEE {
+  id int [pk]
+  employee_code nvarchar(255) [unique, not null]
+  employment_type nvarchar(255) [not null]
+  position nvarchar(255) [not null]
+  is_active bit [not null, default: '1']
+}
+
+Table PROVIDER {
+  id int [pk, increment]
+  name nvarchar(255) [not null]
+  email nvarchar(255)
+  phone nvarchar(255) [not null]
+}
+
+Table CATEGORY {
+  id int [pk, increment]
+  name nvarchar(255) [not null]
+}
+
+Table MANUFACTURER {
+  id int [pk, increment]
+  name nvarchar(255) [not null]
+}
+
+Table PRODUCT {
+  id int [pk, increment]
+  name nvarchar(255) [not null]
+  category_id int [not null]
+  manufacturer_id int
+  in_unit_price "decimal(18,2)" [not null]
+  out_unit_price "decimal(18,2)" [not null]
+  stock_quantity int [not null, default: '0']
+  warranty_months int [not null, default: '12']
+}
+
+Table IMPORT {
+  id int [pk, increment]
+  employee_id int [not null]
+  provider_id int [not null]
+  create_time datetime [not null, default: `GETDATE()`]
+}
+
+Table IMPORT_DETAIL {
+  import_id int [pk]
+  product_id int [pk]
+  import_quantity int [not null]
+  unit_price "decimal(18,2)" [not null]
+}
+
+Table PRODUCT_SERIAL {
+  serial_number nvarchar(255) [pk]
+  product_id int [not null]
+  import_id int [not null]
+  sell_status bit [not null, default: '1', note: '1: In_Stock']
+}
+
+Table INVOICE {
+  id int [pk, increment]
+  customer_id int [not null]
+  employee_id int [not null]
+  create_time datetime [not null, default: `GETDATE()`]
+}
+
+Table INVOICE_DETAIL {
+  invoice_id int [pk]
+  product_id int [pk]
+  buy_quantity int [not null]
+  unit_price "decimal(18,2)" [not null]
+}
+
+Table WARRANTY {
+  id int [pk, increment]
+  invoice_id int [not null]
+  product_id int [not null]
+  serial_number nvarchar(255) [not null]
+  start_date date [not null]
+  end_date date [not null]
+}
+
+Table WARRANTY_CLAIM {
+  id int [pk, increment]
+  warranty_id int [not null]
+  employee_id int [not null]
+  claim_date date [not null]
+  description nvarchar(255)
+  status nvarchar(255) [not null]
+}
+
+Table ACCOUNT {
+  employee_id int [pk]
+  username nvarchar(255) [unique, not null]
+  password nvarchar(255) [not null]
+  role nvarchar(50) [not null, default: 'employee']
+}
+
+Ref: PERSON_PHONE.person_id > PERSON.id
+
+Ref: CUSTOMER.id - PERSON.id
+Ref: EMPLOYEE.id - PERSON.id
+
+Ref: PRODUCT.category_id > CATEGORY.id
+Ref: PRODUCT.manufacturer_id > MANUFACTURER.id
+
+Ref: IMPORT.employee_id > EMPLOYEE.id
+Ref: IMPORT.provider_id > PROVIDER.id
+
+Ref: IMPORT_DETAIL.import_id > IMPORT.id
+Ref: IMPORT_DETAIL.product_id > PRODUCT.id
+
+Ref: PRODUCT_SERIAL.product_id > PRODUCT.id
+Ref: PRODUCT_SERIAL.import_id > IMPORT.id
+
+Ref: INVOICE.customer_id > CUSTOMER.id
+Ref: INVOICE.employee_id > EMPLOYEE.id
+
+Ref: INVOICE_DETAIL.invoice_id > INVOICE.id
+Ref: INVOICE_DETAIL.product_id > PRODUCT.id
+
+Ref: WARRANTY.invoice_id > INVOICE.id
+Ref: WARRANTY.product_id > PRODUCT.id
+Ref: WARRANTY.serial_number - PRODUCT_SERIAL.serial_number
+
+Ref: WARRANTY_CLAIM.warranty_id > WARRANTY.id
+Ref: WARRANTY_CLAIM.employee_id > EMPLOYEE.id
+
+Ref: ACCOUNT.employee_id - EMPLOYEE.id

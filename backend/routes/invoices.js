@@ -232,7 +232,7 @@ router.post('/', async (req, res) => {
     await transaction.commit();
     res.json({ success: true, message: 'Tạo hóa đơn thành công! Bảo hành đã được kích hoạt tự động.' });
   } catch (err) {
-    try { await transaction.rollback(); } catch (e) {}
+    try { await transaction.rollback(); } catch (e) { }
     console.error('POST /invoices error:', err);
     const msg = err.message.includes('tồn kho') ? err.message : 'Lỗi: ' + err.message;
     res.status(500).json({ success: false, message: msg });
